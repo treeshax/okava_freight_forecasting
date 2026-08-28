@@ -1,0 +1,364 @@
+/* Charter-IQ homepage — scoped under .ciq-* so it never touches dashboard styles. */
+
+.ciq-home {
+  --ciq-base: #0a0714;
+  --ciq-surface: #150e26;
+  --ciq-surface-2: #1b1030;
+  --ciq-amber: #d9a441;
+  --ciq-amber-soft: #e7c485;
+  --ciq-ink: #ece7f5;
+  --ciq-ink-dim: #a99fc0;
+
+  margin: 0;
+  width: 100%;
+  min-height: 100vh;
+  background: var(--ciq-base);
+  color: var(--ciq-ink);
+  font-family: "DM Sans", "Plus Jakarta Sans", system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+/* ── Hero ─────────────────────────────────────────────── */
+.ciq-hero {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-end;
+  isolation: isolate;
+}
+
+.ciq-hero__scene {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none; /* background scene never intercepts CTA clicks */
+  background:
+    radial-gradient(
+      120% 90% at 78% 18%,
+      rgba(217, 164, 65, 0.16) 0%,
+      transparent 55%
+    ),
+    linear-gradient(180deg, var(--ciq-surface) 0%, var(--ciq-base) 70%);
+}
+
+.ciq-hero__canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.ciq-hero__scene canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* darken edges, lift the wordmark off the water */
+.ciq-hero__vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(10, 7, 20, 0.55) 0%,
+      rgba(10, 7, 20, 0) 30%,
+      rgba(10, 7, 20, 0.15) 55%,
+      rgba(10, 7, 20, 0.9) 100%
+    ),
+    radial-gradient(
+      100% 60% at 20% 90%,
+      rgba(10, 7, 20, 0.75) 0%,
+      transparent 70%
+    );
+}
+
+.ciq-hero__content {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 clamp(1.5rem, 5vw, 5rem) clamp(3rem, 9vh, 7rem);
+}
+
+.ciq-hero__eyebrow {
+  margin: 0 0 1.1rem;
+  font-size: 0.74rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ciq-amber-soft);
+  font-weight: 600;
+}
+
+.ciq-hero__wordmark {
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 0.92;
+  font-size: clamp(3.2rem, 12vw, 9rem);
+  color: var(--ciq-ink);
+  text-shadow: 0 0.15em 0.9em rgba(10, 7, 20, 0.6);
+}
+
+.ciq-hero__wordmark span {
+  color: var(--ciq-amber);
+  padding: 0 0.06em;
+}
+
+.ciq-hero__subhead {
+  margin: 1.4rem 0 0;
+  max-width: 46ch;
+  font-size: clamp(1rem, 1.6vw, 1.2rem);
+  line-height: 1.6;
+  color: var(--ciq-ink-dim);
+}
+
+.ciq-hero__actions {
+  margin-top: 2.2rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+}
+
+.ciq-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.85rem 1.7rem;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  letter-spacing: 0.01em;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+.ciq-btn--primary {
+  background: linear-gradient(135deg, var(--ciq-amber) 0%, #b9822d 100%);
+  color: #1a1206;
+  box-shadow: 0 0.6em 1.8em -0.5em rgba(217, 164, 65, 0.55);
+}
+.ciq-btn--primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.8em 2.2em -0.4em rgba(217, 164, 65, 0.7);
+}
+
+.ciq-btn--ghost {
+  background: rgba(236, 231, 245, 0.06);
+  color: var(--ciq-ink);
+  border: 1px solid rgba(236, 231, 245, 0.18);
+  backdrop-filter: blur(6px);
+}
+.ciq-btn--ghost:hover {
+  background: rgba(236, 231, 245, 0.12);
+  transform: translateY(-2px);
+}
+
+.ciq-hero__credit {
+  position: absolute;
+  right: clamp(1rem, 4vw, 3rem);
+  bottom: 1rem;
+  z-index: 2;
+  font-size: 0.7rem;
+  color: rgba(169, 159, 192, 0.5);
+}
+
+/* ── CSS / SVG cinematic ocean (hero fallback + CTA backdrop) ─────── */
+.ciq-cssocean {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #0a0714;
+  pointer-events: none; /* purely decorative — never intercept clicks */
+}
+
+.ciq-cssocean__sky {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    #1b1030 0%,
+    #150e26 38%,
+    #0a0714 66%
+  );
+}
+
+.ciq-cssocean__glow {
+  position: absolute;
+  top: -12%;
+  right: 4%;
+  width: 60vmax;
+  height: 60vmax;
+  transform: translateZ(0);
+  background: radial-gradient(
+    circle at center,
+    rgba(217, 164, 65, 0.4) 0%,
+    rgba(217, 164, 65, 0.14) 32%,
+    rgba(217, 164, 65, 0) 62%
+  );
+  filter: blur(10px);
+}
+.ciq-cssocean--calm .ciq-cssocean__glow {
+  opacity: 0.55;
+  top: 2%;
+}
+
+.ciq-cssocean__haze {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 46%;
+  height: 22%;
+  background: linear-gradient(
+    180deg,
+    rgba(27, 16, 48, 0) 0%,
+    rgba(37, 22, 58, 0.55) 50%,
+    rgba(10, 7, 20, 0) 100%
+  );
+  filter: blur(6px);
+}
+
+.ciq-cssocean__sea {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  bottom: 0;
+  height: 52%;
+  background: linear-gradient(180deg, #140c24 0%, #06040d 78%);
+}
+
+.ciq-cssocean__reflection {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 30%;
+  height: 100%;
+  transform: translateX(20%);
+  background: linear-gradient(
+    180deg,
+    rgba(217, 164, 65, 0.42) 0%,
+    rgba(217, 164, 65, 0.12) 26%,
+    rgba(217, 164, 65, 0) 62%
+  );
+  filter: blur(9px);
+  animation: ciq-shimmer 6s ease-in-out infinite;
+}
+
+.ciq-cssocean__wave {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(203, 211, 230, 0.16) 30%,
+    rgba(217, 164, 65, 0.5) 50%,
+    rgba(203, 211, 230, 0.16) 70%,
+    transparent 100%
+  );
+  opacity: 0.5;
+  animation: ciq-swell 7s ease-in-out infinite;
+}
+.ciq-cssocean__wave:nth-child(2) {
+  top: 10%;
+  animation-delay: 0s;
+}
+.ciq-cssocean__wave:nth-child(3) {
+  top: 26%;
+  animation-delay: -1.7s;
+  opacity: 0.36;
+}
+.ciq-cssocean__wave:nth-child(4) {
+  top: 44%;
+  animation-delay: -3.4s;
+  opacity: 0.24;
+}
+.ciq-cssocean__wave:nth-child(5) {
+  top: 66%;
+  animation-delay: -5.1s;
+  opacity: 0.16;
+}
+
+.ciq-cssocean__ship {
+  position: absolute;
+  left: 50%;
+  bottom: 42%;
+  width: min(94vw, 1020px);
+  transform: translateX(-52%);
+  filter:
+    drop-shadow(0 10px 44px rgba(0, 0, 0, 0.65))
+    drop-shadow(0 0 60px rgba(217, 164, 65, 0.14));
+  animation: ciq-bob 9s ease-in-out infinite;
+}
+
+.ciq-cssocean__vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      110% 70% at 30% 88%,
+      rgba(10, 7, 20, 0.6) 0%,
+      transparent 66%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(10, 7, 20, 0.5) 0%,
+      transparent 26%,
+      transparent 58%,
+      rgba(10, 7, 20, 0.86) 100%
+    );
+}
+
+@keyframes ciq-swell {
+  0%,
+  100% {
+    transform: translateX(-3%) scaleY(1);
+  }
+  50% {
+    transform: translateX(3%) scaleY(1.7);
+  }
+}
+@keyframes ciq-shimmer {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: translateX(18%) scaleX(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: translateX(22%) scaleX(1.15);
+  }
+}
+@keyframes ciq-bob {
+  0%,
+  100% {
+    transform: translateX(-52%) translateY(0) rotate(-0.4deg);
+  }
+  50% {
+    transform: translateX(-52%) translateY(-8px) rotate(0.4deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ciq-cssocean__wave,
+  .ciq-cssocean__reflection,
+  .ciq-cssocean__ship {
+    animation: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .ciq-hero {
+    align-items: center;
+    text-align: left;
+  }
+  .ciq-hero__credit {
+    display: none;
+  }
+}

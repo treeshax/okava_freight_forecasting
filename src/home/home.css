@@ -1,0 +1,438 @@
+/* Charter-IQ homepage sections — scoped under .ciq-* , shares hero.css tokens. */
+
+.ciq-section {
+  position: relative;
+  padding: clamp(4.5rem, 12vh, 8.5rem) clamp(1.5rem, 5vw, 5rem);
+  scroll-margin-top: 2rem;
+}
+
+.ciq-container {
+  max-width: 1160px;
+  margin: 0 auto;
+}
+
+/* seamless surface flow — no hard block boundaries */
+.ciq-section--base {
+  background: var(--ciq-base);
+}
+.ciq-section--surface {
+  background: linear-gradient(
+    180deg,
+    var(--ciq-base) 0%,
+    #120a20 12%,
+    #120a20 88%,
+    var(--ciq-base) 100%
+  );
+}
+
+.ciq-hairline {
+  height: 1px;
+  border: 0;
+  margin: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(217, 164, 65, 0.28) 50%,
+    transparent
+  );
+}
+
+.ciq-eyebrow {
+  margin: 0 0 1rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--ciq-amber-soft);
+}
+
+.ciq-section__lead {
+  margin: 0;
+  font-size: clamp(1.35rem, 2.6vw, 2rem);
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  color: var(--ciq-ink);
+  max-width: 24ch;
+}
+.ciq-section__lead--wide {
+  max-width: 34ch;
+}
+
+.ciq-section__note {
+  margin: 1.75rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: rgba(156, 147, 176, 0.7);
+  max-width: 62ch;
+}
+
+/* ── reveal-on-scroll ─────────────────────────────────── */
+.ciq-reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition:
+    opacity 0.38s ease-out,
+    transform 0.38s ease-out;
+}
+.ciq-reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+.ciq-reveal[data-delay="1"] {
+  transition-delay: 0.06s;
+}
+.ciq-reveal[data-delay="2"] {
+  transition-delay: 0.12s;
+}
+.ciq-reveal[data-delay="3"] {
+  transition-delay: 0.18s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ciq-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* ══ SECTION 1 — THE PROBLEM ══════════════════════════════ */
+.ciq-problem__grid {
+  margin-top: clamp(2.5rem, 5vw, 3.5rem);
+  display: grid;
+  gap: 0.75rem;
+}
+@media (min-width: 720px) {
+  .ciq-problem__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .ciq-problem__card:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+.ciq-problem__card {
+  position: relative;
+  padding: 1.25rem 1.4rem 1.25rem 1.5rem;
+  background: var(--ciq-surface);
+  border: 1px solid rgba(203, 211, 230, 0.09);
+  border-radius: 12px;
+  overflow: hidden;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+.ciq-problem__card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--ciq-amber);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 0.22s ease;
+}
+.ciq-problem__card:hover {
+  border-color: rgba(217, 164, 65, 0.32);
+  background: #1a1030;
+}
+.ciq-problem__card:hover::before {
+  transform: scaleY(1);
+}
+.ciq-problem__card h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--ciq-ink);
+}
+.ciq-problem__card p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--ciq-ink-dim);
+}
+
+/* ══ SECTION 2 — THE SHIFT ════════════════════════════════ */
+.ciq-shift {
+  text-align: center;
+  padding-block: clamp(6rem, 18vh, 11rem);
+}
+.ciq-shift__quote {
+  margin: 0 auto;
+  max-width: 18ch;
+  font-size: clamp(1.9rem, 5.2vw, 3.6rem);
+  line-height: 1.18;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ciq-ink);
+}
+.ciq-shift__quote em {
+  font-style: normal;
+  color: var(--ciq-amber);
+}
+.ciq-shift__rule {
+  width: 88px;
+  height: 2px;
+  margin: 2.4rem auto 0;
+  background: var(--ciq-amber);
+  border: 0;
+}
+
+/* ══ SECTION 3 — HOW IT WORKS ═════════════════════════════ */
+.ciq-pillars {
+  margin-top: clamp(2.5rem, 5vw, 3.75rem);
+  display: grid;
+  gap: 1rem;
+}
+@media (min-width: 860px) {
+  .ciq-pillars {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+.ciq-pillar {
+  padding: 1.75rem 1.6rem;
+  background: var(--ciq-surface);
+  border: 1px solid rgba(203, 211, 230, 0.09);
+  border-top: 2px solid rgba(217, 164, 65, 0.4);
+  border-radius: 12px;
+}
+.ciq-pillar__icon {
+  width: 30px;
+  height: 30px;
+  color: var(--ciq-amber);
+  margin-bottom: 1rem;
+}
+.ciq-pillar__num {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  color: var(--ciq-amber-soft);
+  letter-spacing: 0.1em;
+}
+.ciq-pillar h3 {
+  margin: 0.15rem 0 1rem;
+  font-size: 1.12rem;
+  font-weight: 600;
+  color: var(--ciq-ink);
+}
+.ciq-pillar ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.7rem;
+}
+.ciq-pillar li {
+  position: relative;
+  padding-left: 1.1rem;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--ciq-ink-dim);
+}
+.ciq-pillar li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ciq-amber);
+}
+
+/* ══ SECTION 4 — TECHNICAL APPROACH ══════════════════════ */
+.ciq-pipeline {
+  margin-top: clamp(2.5rem, 5vw, 3.75rem);
+  display: grid;
+  gap: 0;
+}
+.ciq-pipeline__stage {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1.25rem 0;
+}
+.ciq-pipeline__stage-label {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ciq-amber-soft);
+}
+.ciq-pipeline__nodes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.ciq-pipeline__node {
+  padding: 0.6rem 0.95rem;
+  font-size: 0.85rem;
+  color: var(--ciq-ink);
+  background: var(--ciq-surface);
+  border: 1px solid rgba(203, 211, 230, 0.1);
+  border-radius: 9px;
+}
+.ciq-pipeline__connector {
+  width: 1px;
+  height: 26px;
+  margin-left: 1.1rem;
+  background: linear-gradient(
+    180deg,
+    rgba(217, 164, 65, 0.5),
+    rgba(217, 164, 65, 0.12)
+  );
+}
+.ciq-pipeline__stage--out .ciq-pipeline__node {
+  border-color: rgba(217, 164, 65, 0.35);
+  background: #1a1030;
+}
+.ciq-pipeline__stack {
+  margin: 2rem 0 0;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  color: rgba(156, 147, 176, 0.65);
+}
+
+@media (min-width: 900px) {
+  .ciq-pipeline {
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    align-items: start;
+    gap: 0;
+  }
+  .ciq-pipeline__stage {
+    padding: 0 1.25rem;
+  }
+  .ciq-pipeline__stage:first-child {
+    padding-left: 0;
+  }
+  .ciq-pipeline__connector {
+    width: 100%;
+    height: 1px;
+    margin: 2.6rem 0 0;
+    background: linear-gradient(
+      90deg,
+      rgba(217, 164, 65, 0.5),
+      rgba(217, 164, 65, 0.12)
+    );
+  }
+}
+
+/* ══ SECTION 5 — PROJECTED IMPACT ════════════════════════ */
+.ciq-impact__group {
+  margin-top: clamp(2.25rem, 4vw, 3rem);
+}
+.ciq-impact__subhead {
+  font-size: 0.74rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ciq-amber-soft);
+  margin: 0 0 1rem;
+}
+.ciq-impact__grid {
+  display: grid;
+  gap: 1px;
+  background: rgba(203, 211, 230, 0.09);
+  border: 1px solid rgba(203, 211, 230, 0.09);
+  border-radius: 12px;
+  overflow: hidden;
+}
+@media (min-width: 620px) {
+  .ciq-impact__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 940px) {
+  .ciq-impact__grid--3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .ciq-impact__grid--4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.ciq-stat {
+  padding: 1.5rem 1.4rem;
+  background: var(--ciq-base);
+}
+.ciq-stat__value {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: clamp(1.5rem, 3.2vw, 2.1rem);
+  font-weight: 700;
+  color: var(--ciq-amber);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.ciq-stat__label {
+  margin: 0.5rem 0 0;
+  font-size: 0.83rem;
+  line-height: 1.5;
+  color: var(--ciq-ink-dim);
+}
+
+/* ══ SECTION 6 — WHAT SETS US APART ══════════════════════ */
+.ciq-apart__grid {
+  margin-top: clamp(2.5rem, 5vw, 3.5rem);
+  display: grid;
+  gap: 1.25rem;
+}
+@media (min-width: 820px) {
+  .ciq-apart__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.ciq-apart__card {
+  padding: 2rem 1.9rem;
+  background: linear-gradient(160deg, #1b1030 0%, #120a20 100%);
+  border: 1px solid rgba(217, 164, 65, 0.22);
+  border-radius: 14px;
+}
+.ciq-apart__card h3 {
+  margin: 0 0 0.9rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ciq-amber);
+  letter-spacing: -0.01em;
+}
+.ciq-apart__card p {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--ciq-ink);
+}
+
+/* ══ SECTION 7 — CTA ═════════════════════════════════════ */
+.ciq-cta {
+  position: relative;
+  min-height: 62vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  overflow: hidden;
+  padding: clamp(4rem, 12vh, 7rem) 1.5rem;
+}
+.ciq-cta__inner {
+  position: relative;
+  z-index: 2;
+}
+.ciq-cta__kicker {
+  margin: 0 0 1rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ciq-amber-soft);
+}
+.ciq-cta__title {
+  margin: 0 0 2rem;
+  font-size: clamp(2rem, 6vw, 3.4rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ciq-ink);
+}
+.ciq-cta__ocean {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}

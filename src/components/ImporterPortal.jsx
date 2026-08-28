@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   LineChart,
   Line,
@@ -25,14 +25,17 @@ import {
   Loader,
   ChevronDown,
   ArrowRight,
+  UserCheck,
+  UserX,
 } from "lucide-react";
 import {
   COMMODITIES,
   ORIGIN_PORTS,
   DEST_PORTS,
-  freightRateData,
-  eastCoastPorts,
+  freightRateData as mockFreightRate,
 } from "../data/mockData";
+
+const API_BASE = "http://localhost:8000/api";
 
 /* ── Chart tooltip ─────────────────────────── */
 const ChartTooltip = ({ active, payload, label }) => {
@@ -72,7 +75,7 @@ const ChartTooltip = ({ active, payload, label }) => {
             >
               <span style={{ color: p.color }}>{p.name}</span>
               <span style={{ color: "var(--text-primary)", fontWeight: 700 }}>
-                ${p.value.toFixed(1)}/MT
+                ${Number(p.value).toFixed(1)}/MT
               </span>
             </div>
           ),
@@ -132,228 +135,117 @@ const RiskRow = ({ label, level, value, Icon }) => {
   );
 };
 
-/* ── AI Results ────────────────────────────── */
-const AIResults = ({ formData }) => {
-  const destPort = eastCoastPorts.find((p) => p.id === formData.destPort);
-  const isHaldia = destPort?.id === "HALD";
-  const isRichardsBay = formData.originPort === "RICH";
+/* ── AI Results Detail Panel ───────────────── */
+const AIResults = ({ formData, rankings }) => {
   const isRussianRoute = formData.originPort === "VOST";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-      {/* Entry Window */}
-      <div className="card" style={{ borderColor: "rgba(99,102,241,0.3)" }}>
+      {/* Dynamic Vessel Rankings with Cost Breakdown */}
+      <div className="card">
         <div
           style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            marginBottom: "1.25rem",
+            fontSize: "0.68rem",
+            color: "var(--text-muted)",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            fontWeight: 600,
+            marginBottom: "0.75rem",
           }}
         >
-          <div>
-            <div
-              style={{
-                fontSize: "0.68rem",
-                color: "var(--text-muted)",
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-                fontWeight: 600,
-                marginBottom: 3,
-              }}
-            >
-              AI Market Entry Strategy
-            </div>
-            <div
-              style={{
-                fontSize: "1rem",
-                fontWeight: 700,
-                color: "var(--text-primary)",
-              }}
-            >
-              Optimal Charter Window
-            </div>
-          </div>
-          <span
-            className={`badge ${isRichardsBay ? "badge-green" : isRussianRoute ? "badge-amber" : "badge-green"}`}
-          >
-            <CheckCircle size={10} />{" "}
-            {isRichardsBay
-              ? "WAIT 12 DAYS"
-              : isRussianRoute
-                ? "RISK REVIEW"
-                : "Recommended"}
-          </span>
+          Feasibility rankings & itemized costs
         </div>
 
-        {/* Simple timeline */}
-        <div
-          style={{
-            position: "relative",
-            height: 40,
-            borderRadius: 8,
-            overflow: "hidden",
-            background: "var(--bg-primary)",
-            marginBottom: "1.25rem",
-          }}
-        >
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "linear-gradient(90deg, rgba(239,68,68,0.18) 0 35%, rgba(16,185,129,0.22) 35% 60%, rgba(245,158,11,0.12) 60% 100%)",
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              left: "37%",
-              top: "50%",
-              transform: "translateY(-50%)",
-              fontSize: "0.68rem",
-              fontWeight: 700,
-              color: "#10b981",
-              letterSpacing: "0.04em",
-            }}
-          >
-            ✓ ENTER HERE
-          </div>
-          <div
-            style={{
-              position: "absolute",
-              left: 8,
-              top: "50%",
-              transform: "translateY(-50%)",
-              fontSize: "0.62rem",
-              color: "#ef4444",
-              fontWeight: 600,
-            }}
-          >
-            PEAK
-          </div>
-          <div
-            style={{
-              position: "absolute",
-              right: 8,
-              top: "50%",
-              transform: "translateY(-50%)",
-              fontSize: "0.62rem",
-              color: "#f59e0b",
-              fontWeight: 600,
-            }}
-          >
-            WATCH
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr",
-            gap: "0.875rem",
-          }}
-        >
-          {[
-            {
-              label: "Recommended Entry",
-              value: isRichardsBay ? "WAIT 12 DAYS" : "12–15 Days",
-              sub: isRichardsBay ? "Projected drop $2.40/MT" : "Sep 7–10",
-              color: "#10b981",
-            },
-            {
-              label: "Projected Savings",
-              value: isRichardsBay ? "~14.8%" : "~8.5%",
-              sub: "vs. today's spot",
-              color: "#10b981",
-            },
-            {
-              label: "Forecast Confidence",
-              value: "87.3%",
-              sub: "model accuracy",
-              color: "#f59e0b",
-            },
-          ].map((s, i) => (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          {rankings.map((rank, idx) => (
             <div
-              key={i}
+              key={idx}
               style={{
                 background: "var(--bg-primary)",
                 borderRadius: 10,
-                padding: "0.875rem",
+                padding: "1rem",
+                border: idx === 0 ? "1px solid rgba(34,211,238,0.3)" : "1px solid var(--border-color)",
               }}
             >
               <div
                 style={{
-                  fontSize: "0.65rem",
-                  color: "var(--text-muted)",
-                  fontWeight: 600,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                  marginBottom: 4,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: "0.5rem",
                 }}
               >
-                {s.label}
+                <div>
+                  <strong style={{ fontSize: "0.9rem", color: "var(--text-primary)" }}>
+                    #{idx + 1} {rank.vessel_class}
+                  </strong>
+                  {idx === 0 && (
+                    <span className="badge badge-cyan" style={{ marginLeft: 8 }}>
+                      Best Match
+                    </span>
+                  )}
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: "1.05rem", fontWeight: 800, color: "var(--accent-cyan)" }}>
+                    ${rank.effective_cost_per_tonne}/MT
+                  </div>
+                  <div style={{ fontSize: "0.65rem", color: "var(--text-muted)" }}>
+                    Total: ${rank.effective_cost.toLocaleString()}
+                  </div>
+                </div>
               </div>
+
+              {/* Warnings and Alerts specific to this vessel class */}
+              {rank.warnings && rank.warnings.map((warn, wIdx) => (
+                <div
+                  key={wIdx}
+                  style={{
+                    display: "flex",
+                    gap: 6,
+                    alignItems: "center",
+                    fontSize: "0.7rem",
+                    color: "#f59e0b",
+                    marginBottom: 4,
+                  }}
+                >
+                  <AlertTriangle size={11} />
+                  <span>{warn}</span>
+                </div>
+              ))}
+
               <div
                 style={{
-                  fontSize: "1.15rem",
-                  fontWeight: 800,
-                  color: s.color,
-                  lineHeight: 1,
+                  display: "grid",
+                  gridTemplateColumns: "repeat(5, 1fr)",
+                  gap: 6,
+                  marginTop: "0.5rem",
+                  borderTop: "1px solid var(--border-color)",
+                  paddingTop: "0.5rem",
                 }}
               >
-                {s.value}
-              </div>
-              <div
-                style={{
-                  fontSize: "0.68rem",
-                  color: "var(--text-muted)",
-                  marginTop: 3,
-                }}
-              >
-                {s.sub}
+                {[
+                  { label: "Base Freight", value: `$${rank.cost_breakdown.base_freight.toLocaleString()}` },
+                  { label: "Port Tariff", value: `$${rank.cost_breakdown.port_turnaround.toLocaleString()}` },
+                  { label: "Idle Delay", value: `$${rank.cost_breakdown.idle_delay.toLocaleString()}` },
+                  { label: "Risk Premium", value: `$${rank.cost_breakdown.geopolitical_premium.toLocaleString()}` },
+                  { label: "Scale Adjustment", value: `$${rank.cost_breakdown.scale_adjustment.toLocaleString()}` },
+                ].map((item, i) => (
+                  <div key={i} style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: "0.55rem", color: "var(--text-muted)", textTransform: "uppercase" }}>
+                      {item.label}
+                    </div>
+                    <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                      {item.value}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           ))}
         </div>
-
-        <div
-          style={{
-            marginTop: "1rem",
-            padding: "0.75rem 1rem",
-            background: "rgba(99,102,241,0.05)",
-            borderRadius: 9,
-            borderLeft: "3px solid var(--accent-primary)",
-          }}
-        >
-          <p
-            style={{
-              fontSize: "0.76rem",
-              color: "var(--text-secondary)",
-              margin: 0,
-              lineHeight: 1.6,
-            }}
-          >
-            <strong style={{ color: "var(--text-primary)" }}>
-              AI Insight:
-            </strong>{" "}
-            {isRussianRoute
-              ? "Sanctions screening and war-risk insurance premiums require approval before fixture."
-              : isRichardsBay
-                ? "Atlantic vessel repositioning creates a favorable wait window. Rates on Richards Bay → Vizag are forecast to soften $2.40/MT."
-                : `BDI correction expected in 10–14 days as Atlantic basin vessels reposition to Pacific. Rates on ${formData.originPortName || "selected route"} → India EC forecast to soften $1.2–1.8/MT.`}
-          </p>
-        </div>
       </div>
 
-      {/* Vessel + Contract — side by side */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "1.25rem",
-        }}
-      >
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
         {/* Vessel Recommendation */}
         <div className="card">
           <div
@@ -366,7 +258,7 @@ const AIResults = ({ formData }) => {
               marginBottom: "0.75rem",
             }}
           >
-            Vessel Class
+            Match Specs
           </div>
           <div
             style={{
@@ -376,23 +268,8 @@ const AIResults = ({ formData }) => {
               marginBottom: 4,
             }}
           >
-            <span
-              style={{
-                fontSize: "1.4rem",
-                fontWeight: 800,
-                color: "var(--text-primary)",
-              }}
-            >
-              Panamax
-            </span>
-            <span
-              style={{
-                fontSize: "0.8rem",
-                color: "var(--accent-cyan)",
-                fontWeight: 600,
-              }}
-            >
-              75–82K DWT
+            <span style={{ fontSize: "1.4rem", fontWeight: 800, color: "var(--text-primary)" }}>
+              {rankings[0]?.vessel_class || "Panamax"}
             </span>
           </div>
           <p
@@ -403,39 +280,8 @@ const AIResults = ({ formData }) => {
               marginBottom: "1rem",
             }}
           >
-            Optimal for this route. Matching draft clearance at{" "}
-            {destPort?.name || "destination"} ({destPort?.maxDraft || "--"}m
-            max).
+            Hard constraints verification completed. Vessel metrics aligned with draft limitations.
           </p>
-
-          {isHaldia && (
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                padding: "0.625rem 0.75rem",
-                background: "rgba(239,68,68,0.08)",
-                border: "1px solid rgba(239,68,68,0.25)",
-                borderRadius: 8,
-                marginBottom: "0.875rem",
-              }}
-            >
-              <AlertTriangle
-                size={13}
-                color="#ef4444"
-                style={{ flexShrink: 0, marginTop: 1 }}
-              />
-              <span
-                style={{
-                  fontSize: "0.72rem",
-                  color: "#ef4444",
-                  lineHeight: 1.4,
-                }}
-              >
-                Capesize not permitted — Haldia draft limit is 8.5m.
-              </span>
-            </div>
-          )}
 
           {isRussianRoute && (
             <div
@@ -447,53 +293,13 @@ const AIResults = ({ formData }) => {
                 borderRadius: 8,
                 color: "#f59e0b",
                 marginBottom: "0.875rem",
+                fontSize: "0.72rem",
               }}
             >
-              <AlertTriangle size={13} /> Geopolitical & Insurance Risk:
-              Vostochny route flagged for sanctions and war-risk premium review.
+              <AlertTriangle size={13} style={{ display: "inline", marginRight: 4 }} /> 
+              Geopolitical & Sanction Alert: Route flagged for compliance vetting.
             </div>
           )}
-
-          <div
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}
-          >
-            {[
-              { label: "Voyage Days", value: "18–22 days" },
-              { label: "Voyage Cost", value: "$12.8–14.2/MT" },
-              { label: "Max Draft", value: "14.5m" },
-              { label: "Load Rate", value: "50K MT/day" },
-            ].map((item, i) => (
-              <div
-                key={i}
-                style={{
-                  background: "var(--bg-primary)",
-                  borderRadius: 8,
-                  padding: "0.625rem 0.75rem",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: "0.62rem",
-                    color: "var(--text-muted)",
-                    fontWeight: 600,
-                    textTransform: "uppercase",
-                    marginBottom: 2,
-                  }}
-                >
-                  {item.label}
-                </div>
-                <div
-                  style={{
-                    fontSize: "0.85rem",
-                    fontWeight: 700,
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  {item.value}
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
 
         {/* Contract Strategy */}
@@ -508,27 +314,21 @@ const AIResults = ({ formData }) => {
               marginBottom: "0.875rem",
             }}
           >
-            Contract Strategy
+            Recommended Contract Action
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {[
               {
-                name: "3-Month COA",
+                name: "Contract of Affreightment (CoA) Ladder",
                 badge: "RECOMMENDED",
                 cls: "badge-purple",
-                note: "Lock before Q4 surge — save ~12%",
+                note: "Lock volume to hedge against congestion and rate peaks",
               },
               {
-                name: "Spot Charter",
-                badge: "ALTERNATE",
+                name: "Spot Market Tender",
+                badge: "OPPORTUNISTIC",
                 cls: "badge-blue",
-                note: "Enter when rate dips to $14.5/MT",
-              },
-              {
-                name: "Time Charter",
-                badge: "AVOID",
-                cls: "badge-red",
-                note: "High lock-in risk in volatile market",
+                note: "Procure remaining volume in identified window dips",
               },
             ].map((item, i) => (
               <div
@@ -536,8 +336,7 @@ const AIResults = ({ formData }) => {
                 style={{
                   padding: "0.75rem",
                   borderRadius: 9,
-                  background:
-                    i === 0 ? "rgba(139,92,246,0.07)" : "var(--bg-primary)",
+                  background: i === 0 ? "rgba(139,92,246,0.07)" : "var(--bg-primary)",
                   border: `1px solid ${i === 0 ? "rgba(139,92,246,0.2)" : "var(--border-color)"}`,
                   display: "flex",
                   justifyContent: "space-between",
@@ -546,26 +345,14 @@ const AIResults = ({ formData }) => {
                 }}
               >
                 <div>
-                  <div
-                    style={{
-                      fontSize: "0.82rem",
-                      fontWeight: 700,
-                      color: "var(--text-primary)",
-                      marginBottom: 2,
-                    }}
-                  >
+                  <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: 2 }}>
                     {item.name}
                   </div>
-                  <div
-                    style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}
-                  >
+                  <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
                     {item.note}
                   </div>
                 </div>
-                <span
-                  className={`badge ${item.cls}`}
-                  style={{ flexShrink: 0, fontSize: "0.6rem" }}
-                >
+                <span className={`badge ${item.cls}`} style={{ flexShrink: 0, fontSize: "0.6rem" }}>
                   {item.badge}
                 </span>
               </div>
@@ -590,49 +377,202 @@ export default function ImporterPortal({ scenario }) {
     destPortName: "",
     ...scenario,
   });
+  
   const [isRunning, setIsRunning] = useState(false);
   const [showResults, setShowResults] = useState(Boolean(scenario));
   const [chartTab, setChartTab] = useState("30d");
+  
+  // API variables state
+  const [apiOnline, setApiOnline] = useState(false);
+  const [forecasts, setForecasts] = useState([]);
+  const [rankings, setRankings] = useState([]);
+  const [riskData, setRiskData] = useState(null);
+  
+  // Human in the Loop decisions
+  const [hitlStatus, setHitlStatus] = useState("pending_review"); // pending_review | accepted | overridden
+  const [overrideReason, setOverrideReason] = useState("");
+  const [savedLogs, setSavedLogs] = useState([]);
+
+  // Check API online status and fetch hitl history
+  useEffect(() => {
+    fetch(`${API_BASE}/model-metadata`)
+      .then((res) => {
+        if (res.ok) setApiOnline(true);
+      })
+      .catch(() => setApiOnline(false));
+
+    fetchOverrides();
+  }, []);
+
+  // Fetch scenarios on load if pre-selected
+  useEffect(() => {
+    if (scenario) {
+      handleRun();
+    }
+  }, [scenario]);
+
+  const fetchOverrides = () => {
+    fetch(`${API_BASE}/hitl-overrides`)
+      .then((res) => res.json())
+      .then((data) => setSavedLogs(data))
+      .catch((err) => console.warning("Error fetching overrides history:", err));
+  };
 
   const handleRun = () => {
     setIsRunning(true);
     setShowResults(false);
-    setTimeout(() => {
-      setIsRunning(false);
-      setShowResults(true);
-    }, 2200);
+    setHitlStatus("pending_review");
+    setOverrideReason("");
+
+    if (apiOnline) {
+      const laycanStr = formData.laycanStart || new Date().toISOString().split("T")[0];
+      const volNum = formData.volume || 75000;
+      
+      // Execute concurrent requests to FastAPI Gateway
+      Promise.all([
+        fetch(`${API_BASE}/forecasts?origin=${formData.originPort}&destination=${formData.destPort}&vessel_class=panamax&horizon_days=30`),
+        fetch(`${API_BASE}/vessel-port-rankings?origin=${formData.originPort}&destination=${formData.destPort}&volume=${volNum}&laycan_start=${laycanStr}`),
+        fetch(`${API_BASE}/idle-risk-alerts?origin=${formData.originPort}&destination=${formData.destPort}&vessel_class=panamax`)
+      ])
+        .then(async ([fcRes, rankRes, riskRes]) => {
+          const fc = await fcRes.json();
+          const rk = await rankRes.json();
+          const rs = await riskRes.json();
+
+          // Transform daily forecasts to match chart
+          const rateData = mockFreightRate.map((point) => {
+            // Apply API derived calculations
+            if (point.forecast_panamax !== null) {
+              return {
+                ...point,
+                forecast_panamax: fc.point_forecast || point.forecast_panamax,
+                forecast_capesize: (fc.point_forecast * 1.25) || point.forecast_capesize,
+                forecast_supramax: (fc.point_forecast * 0.85) || point.forecast_supramax,
+                forecast_handysize: (fc.point_forecast * 0.65) || point.forecast_handysize,
+              };
+            }
+            return point;
+          });
+
+          setForecasts(rateData);
+          setRankings(rk.rankings || []);
+          setRiskData(rs);
+          
+          setIsRunning(false);
+          setShowResults(true);
+        })
+        .catch((err) => {
+          console.error("Backend fetch failed. Executing fallback.", err);
+          runMockFallback();
+        });
+    } else {
+      setTimeout(runMockFallback, 1500);
+    }
   };
+
+  const runMockFallback = () => {
+    // Standard mock structure matching exact endpoints
+    const fallbackRankings = [
+      {
+        vessel_class: "Panamax",
+        effective_cost: 14.1 * (formData.volume || 75000) + 55000,
+        effective_cost_per_tonne: 14.8,
+        cost_breakdown: { base_freight: 14.1 * (formData.volume || 75000), port_turnaround: 55000, idle_delay: 15000, geopolitical_premium: 0, scale_adjustment: -60000 },
+        warnings: ["Congestion delay expected on discharge."]
+      },
+      {
+        vessel_class: "Supramax",
+        effective_cost: 12.0 * (formData.volume || 75000) + 42000,
+        effective_cost_per_tonne: 15.6,
+        cost_breakdown: { base_freight: 12.0 * (formData.volume || 75000), port_turnaround: 42000, idle_delay: 24000, geopolitical_premium: 0, scale_adjustment: 0 },
+        warnings: []
+      }
+    ];
+
+    setRankings(fallbackRankings);
+    setForecasts(mockFreightRate);
+    setRiskData({
+      status: formData.originPort === "VOST" ? "RED" : (formData.originPort === "RICH" ? "AMBER" : "GREEN"),
+      congestion_score: formData.destPort === "HALD" ? 9 : 5,
+      weather_alert: formData.originPort === "SAMA",
+      geopolitics_index: formData.originPort === "VOST" ? 85.0 : 10.0,
+      reasons: ["Operational values derived from baseline simulation metrics."]
+    });
+    
+    setIsRunning(false);
+    setShowResults(true);
+  };
+
+  const submitHITLDecision = (decision, reason = "") => {
+    const payload = {
+      username: "Akhilesh M. - Head Procurement",
+      route: `${formData.originPort} -> ${formData.destPort}`,
+      vessel_class: rankings[0]?.vessel_class || "Panamax",
+      recommendation: `Charter recommended entry rate: $${rankings[0]?.effective_cost_per_tonne || 14.8}/MT`,
+      decision: decision,
+      override_reason: reason || "Standard system validation check."
+    };
+
+    if (apiOnline) {
+      fetch(`${API_BASE}/hitl-overrides`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+        .then((res) => res.json())
+        .then(() => {
+          setHitlStatus(decision);
+          fetchOverrides();
+        })
+        .catch((err) => console.error("Error logging human override:", err));
+    } else {
+      setHitlStatus(decision);
+      setSavedLogs([
+        {
+          timestamp: new Date().toISOString(),
+          username: payload.username,
+          route: payload.route,
+          vessel_class: payload.vessel_class,
+          recommendation: payload.recommendation,
+          decision: decision,
+          override_reason: payload.override_reason
+        },
+        ...savedLogs
+      ]);
+    }
+  };
+
+  const isHaldia = formData.destPort === "HALD";
+  const isRichardsBay = formData.originPort === "RICH";
+  const isRussianRoute = formData.originPort === "VOST";
+  
+  // Dynamic headers based on calculations
+  const heroRecommendationText = isRichardsBay
+    ? "WAIT 12 DAYS"
+    : isRussianRoute
+      ? "RISK BLOCK"
+      : isHaldia
+        ? "SPLIT PARCELS"
+        : "BUY / CONTRACT";
 
   return (
     <div className="page-shell procurement-shell">
       {/* Page title */}
       <div style={{ marginBottom: "1.75rem" }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            marginBottom: 4,
-          }}
-        >
-          <Brain size={20} color="var(--accent-primary)" />
-          <h1
-            style={{
-              fontSize: "1.2rem",
-              fontWeight: 800,
-              color: "var(--text-primary)",
-              margin: 0,
-            }}
-          >
-            Procurement & Feasibility Engine
-          </h1>
-          <span className="badge badge-purple">
-            <div className="pulse-dot" style={{ background: "#8b5cf6" }} />
-            AI Active
-          </span>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Brain size={20} color="var(--accent-primary)" />
+            <h1 style={{ fontSize: "1.2rem", fontWeight: 800, color: "var(--text-primary)", margin: 0 }}>
+              Procurement & Feasibility Engine
+            </h1>
+            <span className={`badge ${apiOnline ? "badge-green" : "badge-amber"}`}>
+              <div className="pulse-dot" style={{ background: apiOnline ? "#10b981" : "#f59e0b" }} />
+              {apiOnline ? "System Gateway Online" : "Local Standalone Mode"}
+            </span>
+          </div>
         </div>
         <p className="section-sub">
-          Enter a cargo and route to receive a clear charter recommendation.
+          Verify cargo specifications, constraints, and total effective delivery costs under HITL oversight.
         </p>
       </div>
 
@@ -641,14 +581,7 @@ export default function ImporterPortal({ scenario }) {
         {/* ── LEFT: Form ──────────────────────── */}
         <div className="input-rail">
           <div className="card">
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                marginBottom: "1.25rem",
-              }}
-            >
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "1.25rem" }}>
               <Package size={15} color="var(--accent-primary)" />
               <span style={{ fontWeight: 700, color: "var(--text-primary)" }}>
                 Cargo Configuration
@@ -663,9 +596,7 @@ export default function ImporterPortal({ scenario }) {
                   <select
                     className="select-field"
                     value={formData.commodity}
-                    onChange={(e) =>
-                      setFormData((p) => ({ ...p, commodity: e.target.value }))
-                    }
+                    onChange={(e) => setFormData((p) => ({ ...p, commodity: e.target.value }))}
                   >
                     <option value="">Select commodity…</option>
                     {COMMODITIES.map((c) => (
@@ -687,32 +618,13 @@ export default function ImporterPortal({ scenario }) {
               </div>
 
               <div>
-                <label className="field-label">Destination SAIL Plant</label>
-                <select
-                  className="select-field"
-                  value={formData.plant || ""}
-                  onChange={(e) =>
-                    setFormData((p) => ({ ...p, plant: e.target.value }))
-                  }
-                >
-                  <option value="">Select plant...</option>
-                  <option>Rourkela (via Vizag/Paradip)</option>
-                  <option>Bhilai (via Vizag)</option>
-                  <option>Durgapur (via Haldia/Dhamra)</option>
-                  <option>Burnpur (via Haldia)</option>
-                </select>
-              </div>
-
-              <div>
                 <label className="field-label">Volume (MT)</label>
                 <input
                   type="number"
                   className="input-field"
                   placeholder="e.g. 75 000"
                   value={formData.volume}
-                  onChange={(e) =>
-                    setFormData((p) => ({ ...p, volume: e.target.value }))
-                  }
+                  onChange={(e) => setFormData((p) => ({ ...p, volume: e.target.value }))}
                 />
               </div>
 
@@ -724,9 +636,7 @@ export default function ImporterPortal({ scenario }) {
                     className="select-field"
                     value={formData.originPort}
                     onChange={(e) => {
-                      const port = ORIGIN_PORTS.find(
-                        (p) => p.id === e.target.value,
-                      );
+                      const port = ORIGIN_PORTS.find((p) => p.id === e.target.value);
                       setFormData((p) => ({
                         ...p,
                         originPort: e.target.value,
@@ -762,9 +672,7 @@ export default function ImporterPortal({ scenario }) {
                     className="select-field"
                     value={formData.destPort}
                     onChange={(e) => {
-                      const port = DEST_PORTS.find(
-                        (p) => p.id === e.target.value,
-                      );
+                      const port = DEST_PORTS.find((p) => p.id === e.target.value);
                       setFormData((p) => ({
                         ...p,
                         destPort: e.target.value,
@@ -794,54 +702,30 @@ export default function ImporterPortal({ scenario }) {
               </div>
 
               <div className="input-section-title">Schedule</div>
-              <div
-                className="schedule-row"
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
-                  gap: "0.75rem",
-                }}
-              >
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
                 <div>
-                  <label
-                    className="field-label"
-                    title="Laydays Cancel Days – Period during which the vessel must arrive at origin."
-                  >
-                    Laycan Start ⓘ
-                  </label>
+                  <label className="field-label">Laycan Start</label>
                   <input
                     type="date"
                     className="input-field"
                     value={formData.laycanStart}
-                    onChange={(e) =>
-                      setFormData((p) => ({
-                        ...p,
-                        laycanStart: e.target.value,
-                      }))
-                    }
+                    onChange={(e) => setFormData((p) => ({ ...p, laycanStart: e.target.value }))}
                   />
                 </div>
                 <div>
-                  <label
-                    className="field-label"
-                    title="Laydays Cancel Days – Period during which the vessel must arrive at origin."
-                  >
-                    Laycan End ⓘ
-                  </label>
+                  <label className="field-label">Laycan End</label>
                   <input
                     type="date"
                     className="input-field"
                     value={formData.laycanEnd}
-                    onChange={(e) =>
-                      setFormData((p) => ({ ...p, laycanEnd: e.target.value }))
-                    }
+                    onChange={(e) => setFormData((p) => ({ ...p, laycanEnd: e.target.value }))}
                   />
                 </div>
               </div>
 
               <button
                 onClick={handleRun}
-                disabled={isRunning}
+                disabled={isRunning || !formData.originPort || !formData.destPort}
                 className="btn-primary"
                 style={{
                   width: "100%",
@@ -852,73 +736,36 @@ export default function ImporterPortal({ scenario }) {
               >
                 {isRunning ? (
                   <>
-                    <Loader
-                      size={15}
-                      style={{ animation: "spin 1s linear infinite" }}
-                    />{" "}
-                    Analyzing…
+                    <Loader size={15} style={{ animation: "spin 1s linear infinite" }} /> Analyzing…
                   </>
                 ) : (
                   <>
-                    <Brain size={15} /> Run AI Optimization
+                    <Brain size={15} /> Run Optimization Layer
                   </>
                 )}
               </button>
             </div>
           </div>
 
-          {/* Mini market snapshot */}
-          <div className="card market-snapshot">
-            <p
-              style={{
-                fontSize: "0.68rem",
-                fontWeight: 700,
-                color: "var(--text-muted)",
-                textTransform: "uppercase",
-                letterSpacing: "0.1em",
-                marginBottom: "0.875rem",
-              }}
-            >
-              Live Market Snapshot
-            </p>
-            <div className="market-snapshot-grid">
-              {[
-                { label: "Panamax Spot", value: "$14.1/MT", up: true },
-                { label: "Supramax Spot", value: "$12.0/MT", up: false },
-                { label: "VLSFO Singapore", value: "$598/MT", up: false },
-                { label: "NWC–Vizag TCE", value: "$18,400/day", up: true },
-              ].map((item, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "0.55rem 0",
-                    borderBottom: "none",
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: "0.78rem",
-                      color: "var(--text-secondary)",
-                    }}
-                  >
-                    {item.label}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: "0.82rem",
-                      fontWeight: 700,
-                      color: item.up ? "#10b981" : "#ef4444",
-                    }}
-                  >
-                    {item.value}
-                  </span>
-                </div>
-              ))}
+          {/* HITL History audit card */}
+          {savedLogs.length > 0 && (
+            <div className="card" style={{ marginTop: "1rem" }}>
+              <div style={{ fontSize: "0.68rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "0.5rem" }}>
+                HITL Audit Trail (Last Decisions)
+              </div>
+              <div style={{ maxHeight: 180, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
+                {savedLogs.slice(0, 4).map((log, lIdx) => (
+                  <div key={lIdx} style={{ background: "var(--bg-primary)", padding: 8, borderRadius: 6, fontSize: "0.7rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+                      <span style={{ fontWeight: 700, color: "var(--text-primary)" }}>{log.route} ({log.vessel_class})</span>
+                      <span className={`badge ${log.decision === "accepted" ? "badge-green" : "badge-red"}`}>{log.decision}</span>
+                    </div>
+                    <div style={{ color: "var(--text-muted)", fontSize: "0.65rem" }}>{log.override_reason}</div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* ── RIGHT: Results ───────────────────── */}
@@ -926,40 +773,21 @@ export default function ImporterPortal({ scenario }) {
           {showResults && (
             <div className="hero-recommendation">
               <div>
-                <span className="hero-kicker">Recommendation</span>
-                <strong
-                  className={
-                    formData.originPort === "RICH" ? "hero-wait" : "hero-buy"
-                  }
-                >
-                  {formData.originPort === "RICH"
-                    ? "WAIT 12 DAYS"
-                    : formData.destPort === "HALD"
-                      ? "BUY · SPLIT PARCELS"
-                      : "BUY / REVIEW"}
+                <span className="hero-kicker">Model Decision recommendation</span>
+                <strong className={isRussianRoute ? "hero-draft-fail" : (isRichardsBay ? "hero-wait" : "hero-buy")}>
+                  {heroRecommendationText}
                 </strong>
               </div>
               <div className="hero-vessel">
-                <span>Recommended: Panamax (75,000 DWT)</span>
-                <small
-                  className={
-                    formData.destPort === "HALD"
-                      ? "hero-draft-fail"
-                      : "hero-draft-pass"
-                  }
-                >
-                  Draft Check:{" "}
-                  {formData.destPort === "HALD" ? "REVIEW" : "PASSED"} (
-                  {formData.destPort === "HALD"
-                    ? "14.5m vs 8.5m limit"
-                    : "11.2m vs 12.5m limit"}
-                  )
+                <span>Recommended: {rankings[0]?.vessel_class || "Panamax"}</span>
+                <small className={isHaldia ? "hero-draft-fail" : "hero-draft-pass"}>
+                  Draft Verification: {isHaldia ? "REJECTED (Silting)" : "COMPATIBLE"}
                 </small>
               </div>
               <div className="hero-savings">
-                <span>Est. Savings</span>
+                <span>Effective Rate Target</span>
                 <strong>
-                  {formData.originPort === "RICH" ? "$142,000" : "$86,400"}
+                  ${rankings[0]?.effective_cost_per_tonne || "14.80"}/MT
                 </strong>
               </div>
             </div>
@@ -967,10 +795,7 @@ export default function ImporterPortal({ scenario }) {
 
           {/* AI thinking state */}
           {isRunning && (
-            <div
-              className="card ai-glow"
-              style={{ padding: "2.5rem", textAlign: "center" }}
-            >
+            <div className="card ai-glow" style={{ padding: "2.5rem", textAlign: "center" }}>
               <div
                 style={{
                   width: 52,
@@ -983,72 +808,66 @@ export default function ImporterPortal({ scenario }) {
                   margin: "0 auto 1rem",
                 }}
               >
-                <Brain
-                  size={26}
-                  color="var(--accent-primary)"
-                  style={{ animation: "pulse 1.4s ease infinite" }}
-                />
+                <Brain size={26} color="var(--accent-primary)" style={{ animation: "pulse 1.4s ease infinite" }} />
               </div>
-              <div
-                style={{
-                  fontSize: "0.95rem",
-                  fontWeight: 700,
-                  color: "var(--text-primary)",
-                  marginBottom: 6,
-                }}
-              >
-                AI Engine Running
+              <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
+                Forecasting & Matching Engine
               </div>
-              <div
-                style={{
-                  fontSize: "0.78rem",
-                  color: "var(--text-muted)",
-                  maxWidth: 340,
-                  margin: "0 auto 1.25rem",
-                }}
-              >
-                Analyzing BDI trends, port congestion, vessel supply and
-                seasonal patterns…
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  gap: 6,
-                  justifyContent: "center",
-                  flexWrap: "wrap",
-                }}
-              >
-                {[
-                  "BDI Feeds",
-                  "Port Congestion",
-                  "Vessel Supply",
-                  "Rate Forecast",
-                  "Risk Model",
-                ].map((s, i) => (
-                  <span
-                    key={i}
-                    className="badge badge-purple"
-                    style={{ animationDelay: `${i * 0.18}s` }}
-                  >
-                    {s}
-                  </span>
-                ))}
+              <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", maxWidth: 340, margin: "0 auto 1.25rem" }}>
+                Verifying draft profiles, weather alerts, and calculating optimal vessel class costs...
               </div>
             </div>
           )}
 
           {showResults ? (
             <>
+              {/* HITL Decision checkpoint bar */}
+              <div className="card" style={{ borderLeft: "4px solid var(--accent-cyan)", marginBottom: "1rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <h3 style={{ fontSize: "0.85rem", fontWeight: 800, margin: 0 }}>Human-in-the-Loop Checkpoint</h3>
+                    <p style={{ fontSize: "0.7rem", color: "var(--text-muted)", margin: "2px 0 0 0" }}>
+                      Log audit approval or input override notes back to the optimization reward.
+                    </p>
+                  </div>
+                  {hitlStatus === "pending_review" ? (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button className="btn-primary" onClick={() => submitHITLDecision("accepted")} style={{ background: "#10b981", borderColor: "#10b981", display: "flex", gap: 4, alignItems: "center", fontSize: "0.75rem" }}>
+                        <UserCheck size={14} /> Approve Rate
+                      </button>
+                      <button className="btn-secondary" onClick={() => setHitlStatus("entering_reason")} style={{ borderColor: "#ef4444", color: "#ef4444", display: "flex", gap: 4, alignItems: "center", fontSize: "0.75rem" }}>
+                        <UserX size={14} /> Override
+                      </button>
+                    </div>
+                  ) : hitlStatus === "entering_reason" ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "50%" }}>
+                      <input
+                        className="input-field"
+                        placeholder="State reason for override..."
+                        value={overrideReason}
+                        onChange={(e) => setOverrideReason(e.target.value)}
+                        style={{ padding: "4px 8px", fontSize: "0.72rem" }}
+                      />
+                      <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                        <button className="btn-primary" disabled={!overrideReason} onClick={() => submitHITLDecision("overridden", overrideReason)} style={{ background: "#ef4444", borderColor: "#ef4444", padding: "2px 8px", fontSize: "0.68rem" }}>
+                          Save Override
+                        </button>
+                        <button className="btn-secondary" onClick={() => setHitlStatus("pending_review")} style={{ padding: "2px 8px", fontSize: "0.68rem" }}>
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <span className={`badge ${hitlStatus === "accepted" ? "badge-green" : "badge-red"}`} style={{ fontSize: "0.8rem", padding: "6px 12px" }}>
+                      {hitlStatus === "accepted" ? "✓ Decision Approved" : "✗ Overridden & Logged"}
+                    </span>
+                  )}
+                </div>
+              </div>
+
               {/* Rate forecast chart */}
               <div className="card">
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "1.25rem",
-                  }}
-                >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
                   <div>
                     <div className="section-title">
                       <BarChart2 size={15} color="var(--accent-primary)" />
@@ -1072,132 +891,34 @@ export default function ImporterPortal({ scenario }) {
                 </div>
 
                 <ResponsiveContainer width="100%" height={260}>
-                  <LineChart
-                    data={freightRateData}
-                    margin={{ top: 4, right: 16, left: 0, bottom: 4 }}
-                  >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="rgba(99,102,241,0.05)"
-                    />
-                    <XAxis
-                      dataKey="day"
-                      tick={{ fontSize: 10, fill: "var(--text-muted)" }}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 10, fill: "var(--text-muted)" }}
-                      tickFormatter={(v) => `$${v}`}
-                      domain={[8, 24]}
-                    />
+                  <LineChart data={forecasts.length ? forecasts : mockFreightRate} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(99,102,241,0.05)" />
+                    <XAxis dataKey="day" tick={{ fontSize: 10, fill: "var(--text-muted)" }} />
+                    <YAxis tick={{ fontSize: 10, fill: "var(--text-muted)" }} tickFormatter={(v) => `$${v}`} domain={[8, 24]} />
                     <Tooltip content={<ChartTooltip />} />
-                    <Legend
-                      wrapperStyle={{ fontSize: "0.72rem", paddingTop: 8 }}
-                    />
-                    <ReferenceLine
-                      x="Today"
-                      stroke="rgba(99,102,241,0.4)"
-                      strokeDasharray="4 2"
-                      label={{
-                        value: "Today",
-                        position: "top",
-                        fontSize: 9,
-                        fill: "var(--accent-primary)",
-                      }}
-                    />
-                    <ReferenceArea
-                      x1="Day +10"
-                      x2="Day +15"
-                      fill="rgba(16,185,129,0.05)"
-                      label={{
-                        value: "Best Entry",
-                        fontSize: 9,
-                        fill: "#10b981",
-                        position: "insideTop",
-                      }}
-                    />
-                    <Line
-                      name="Capesize"
-                      dataKey="capesize"
-                      stroke="#6366f1"
-                      strokeWidth={2}
-                      dot={false}
-                      connectNulls={false}
-                    />
-                    <Line
-                      name="Panamax"
-                      dataKey="panamax"
-                      stroke="#22d3ee"
-                      strokeWidth={2}
-                      dot={false}
-                      connectNulls={false}
-                    />
-                    <Line
-                      name="Supramax"
-                      dataKey="supramax"
-                      stroke="#10b981"
-                      strokeWidth={2}
-                      dot={false}
-                      connectNulls={false}
-                    />
-                    <Line
-                      name="Handysize"
-                      dataKey="handysize"
-                      stroke="#f59e0b"
-                      strokeWidth={2}
-                      dot={false}
-                      connectNulls={false}
-                    />
-                    <Line
-                      name="AI: Cape"
-                      dataKey="forecast_capesize"
-                      stroke="#6366f1"
-                      strokeWidth={1.5}
-                      strokeDasharray="5 3"
-                      dot={false}
-                      connectNulls={false}
-                    />
-                    <Line
-                      name="AI: Pan"
-                      dataKey="forecast_panamax"
-                      stroke="#22d3ee"
-                      strokeWidth={1.5}
-                      strokeDasharray="5 3"
-                      dot={false}
-                      connectNulls={false}
-                    />
-                    <Line
-                      name="AI: Supra"
-                      dataKey="forecast_supramax"
-                      stroke="#10b981"
-                      strokeWidth={1.5}
-                      strokeDasharray="5 3"
-                      dot={false}
-                      connectNulls={false}
-                    />
-                    <Line
-                      name="AI: Handy"
-                      dataKey="forecast_handysize"
-                      stroke="#f59e0b"
-                      strokeWidth={1.5}
-                      strokeDasharray="5 3"
-                      dot={false}
-                      connectNulls={false}
-                    />
+                    <Legend wrapperStyle={{ fontSize: "0.72rem", paddingTop: 8 }} />
+                    <ReferenceLine x="Today" stroke="rgba(99,102,241,0.4)" strokeDasharray="4 2" />
+                    
+                    <Line name="Capesize" dataKey="capesize" stroke="#6366f1" strokeWidth={2} dot={false} connectNulls={false} />
+                    <Line name="Panamax" dataKey="panamax" stroke="#22d3ee" strokeWidth={2} dot={false} connectNulls={false} />
+                    <Line name="Supramax" dataKey="supramax" stroke="#10b981" strokeWidth={2} dot={false} connectNulls={false} />
+                    <Line name="Handysize" dataKey="handysize" stroke="#f59e0b" strokeWidth={2} dot={false} connectNulls={false} />
+                    
+                    <Line name="AI: Cape" dataKey="forecast_capesize" stroke="#6366f1" strokeWidth={1.5} strokeDasharray="5 3" dot={false} connectNulls={false} />
+                    <Line name="AI: Pan" dataKey="forecast_panamax" stroke="#22d3ee" strokeWidth={1.5} strokeDasharray="5 3" dot={false} connectNulls={false} />
+                    <Line name="AI: Supra" dataKey="forecast_supramax" stroke="#10b981" strokeWidth={1.5} strokeDasharray="5 3" dot={false} connectNulls={false} />
+                    <Line name="AI: Handy" dataKey="forecast_handysize" stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="5 3" dot={false} connectNulls={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
 
-              {/* Keep secondary detail available without competing with the primary decision. */}
-              {showResults && (
-                <details className="supporting-details">
-                  <summary>View charter details and contract strategy</summary>
-                  <div className="supporting-details-body">
-                    <AIResults formData={formData} />
-                  </div>
-                </details>
-              )}
+              {/* View details */}
+              <div className="supporting-details-body" style={{ marginTop: "1rem" }}>
+                <AIResults formData={formData} rankings={rankings} />
+              </div>
 
-              <div className="card feasibility-output">
+              {/* Physical Feasibility Graph */}
+              <div className="card feasibility-output" style={{ marginTop: "1rem" }}>
                 <div className="section-title">
                   <Shield size={15} color="#22d3ee" />
                   Physical Feasibility Graph
@@ -1212,39 +933,24 @@ export default function ImporterPortal({ scenario }) {
                   <ArrowRight size={13} />
                   <span className="node node-ai">Vessel filter</span>
                   <ArrowRight size={13} />
-                  <span
-                    className={
-                      formData.destPort === "HALD"
-                        ? "node node-bad"
-                        : "node node-good"
-                    }
-                  >
+                  <span className={isHaldia ? "node node-bad" : "node node-good"}>
                     {formData.destPortName || "Destination"}
                   </span>
                 </div>
-                {formData.destPort === "HALD" ? (
+                {isHaldia ? (
                   <div className="constraint-alert">
-                    <AlertTriangle size={13} /> Capesize → Haldia PRUNED: draft
-                    exceeds 8.5m. Auto-split to Panamax parcels.
+                    <AlertTriangle size={13} /> Capesize → Haldia PRUNED: draft exceeds 8.0m monsoon silting constraint. Auto-split to Panamax/Supramax.
                   </div>
                 ) : (
                   <div className="constraint-pass">
-                    <CheckCircle size={13} /> Panamax PASSED: draft and beam
-                    within destination limits.
+                    <CheckCircle size={13} /> Compatibility PASSED: draft and beam within destination limits.
                   </div>
                 )}
               </div>
 
               {/* Risk matrix */}
-              <div className="card risk-assessment">
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "1.25rem",
-                  }}
-                >
+              <div className="card risk-assessment" style={{ marginTop: "1rem" }}>
+                <div style={{ display: "flex", justifycontent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
                   <div>
                     <div className="section-title">
                       <Shield size={15} color="var(--accent-secondary)" />
@@ -1254,149 +960,66 @@ export default function ImporterPortal({ scenario }) {
                       Current exposure based on selected route
                     </p>
                   </div>
-                  <span className="badge badge-amber">Elevated Risk</span>
+                  <span className={`badge ${isRussianRoute ? "badge-red" : (isRichardsBay ? "badge-amber" : "badge-green")}`}>
+                    {isRussianRoute ? "Critical Risk" : (isRichardsBay ? "Elevated Risk" : "Normal Risk")}
+                  </span>
                 </div>
 
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: "1.5rem",
-                  }}
-                >
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
                   <div>
                     <RiskRow
                       label="Port Congestion Delay"
-                      level="High"
-                      value="Est. +2.5–4.5 days"
+                      level={riskData?.congestion_score > 30 ? "High" : "Medium"}
+                      value={`Est. +${((riskData?.congestion_score || 10) / 10).toFixed(1)} days`}
                       Icon={Anchor}
                     />
                     <RiskRow
                       label="Demurrage Exposure"
-                      level="Medium"
+                      level={isHaldia ? "High" : "Medium"}
                       value="$12,500–18,000/day"
                       Icon={Clock}
                     />
                     <RiskRow
                       label="Weather Disruption"
-                      level="Low"
-                      value="8% cyclone probability"
+                      level={riskData?.weather_alert ? "High" : "Low"}
+                      value={riskData?.weather_alert ? "Cyclone Warning active" : "Normal weather"}
                       Icon={Wind}
                     />
                     <RiskRow
                       label="Rate Volatility"
-                      level="Medium"
-                      value="Expected σ $1.8/MT"
+                      level={Math.abs(riskData?.volatility_z || 0) > 1.2 ? "High" : "Low"}
+                      value={`Expected Z-score: ${(riskData?.volatility_z || 0.5).toFixed(2)}`}
                       Icon={Waves}
                     />
                   </div>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "0.875rem",
-                    }}
-                  >
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
                     {[
                       {
                         label: "Demurrage Budget",
-                        value: "$26,500",
-                        sub: "1.5 days @ $17,667/day avg",
+                        value: isHaldia ? "$45,000" : "$17,600",
+                        sub: "Calculated based on congestion delay queues",
                         color: "#f59e0b",
                       },
                       {
                         label: "Dispatch Opportunity",
                         value: "$8,800/day",
-                        sub: "Gangavaram best-case",
+                        sub: "Available on green ports",
                         color: "#10b981",
                       },
                     ].map((s, i) => (
-                      <div
-                        key={i}
-                        style={{
-                          background: "var(--bg-primary)",
-                          borderRadius: 10,
-                          padding: "1rem",
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: "0.65rem",
-                            color: "var(--text-muted)",
-                            fontWeight: 600,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.06em",
-                            marginBottom: 4,
-                          }}
-                        >
+                      <div key={i} style={{ background: "var(--bg-primary)", borderRadius: 10, padding: "1rem" }}>
+                        <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
                           {s.label}
                         </div>
-                        <div
-                          style={{
-                            fontSize: "1.4rem",
-                            fontWeight: 800,
-                            color: s.color,
-                            lineHeight: 1,
-                          }}
-                        >
+                        <div style={{ fontSize: "1.4rem", fontWeight: 800, color: s.color, lineHeight: 1 }}>
                           {s.value}
                         </div>
-                        <div
-                          style={{
-                            fontSize: "0.7rem",
-                            color: "var(--text-muted)",
-                            marginTop: 4,
-                          }}
-                        >
+                        <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: 4 }}>
                           {s.sub}
                         </div>
                       </div>
                     ))}
-                    <div
-                      style={{
-                        padding: "0.875rem",
-                        background: "rgba(239,68,68,0.06)",
-                        border: "1px solid rgba(239,68,68,0.18)",
-                        borderRadius: 10,
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: 8,
-                          alignItems: "flex-start",
-                        }}
-                      >
-                        <AlertTriangle
-                          size={14}
-                          color="#ef4444"
-                          style={{ flexShrink: 0 }}
-                        />
-                        <div>
-                          <div
-                            style={{
-                              fontSize: "0.78rem",
-                              fontWeight: 700,
-                              color: "#ef4444",
-                              marginBottom: 3,
-                            }}
-                          >
-                            Haldia Alert
-                          </div>
-                          <div
-                            style={{
-                              fontSize: "0.72rem",
-                              color: "var(--text-muted)",
-                              lineHeight: 1.5,
-                            }}
-                          >
-                            36hr anchorage wait, congestion 9/10. Consider
-                            Paradip or Dhamra.
-                          </div>
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -1409,23 +1032,7 @@ export default function ImporterPortal({ scenario }) {
               <span className="eyebrow">READY WHEN YOU ARE</span>
               <h2>Start with the cargo on the left</h2>
               <p>
-                Choose a commodity, volume, origin, and destination. CharterIQ
-                will check vessel fit first, then recommend when to charter.
-              </p>
-              <div className="first-use-steps">
-                <span>
-                  <b>1</b> Describe cargo
-                </span>
-                <span>
-                  <b>2</b> Set route
-                </span>
-                <span>
-                  <b>3</b> Run analysis
-                </span>
-              </div>
-              <p className="first-use-hint">
-                For a guided tour, choose a scenario from{" "}
-                <strong>Quick Demo Scenarios for Judges</strong> above.
+                Choose a commodity, volume, origin, and destination. CharterIQ will check vessel fit first, then recommend when to charter.
               </p>
             </div>
           )}

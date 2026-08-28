@@ -297,7 +297,7 @@ export default function PortIntelligencePortal() {
                         color: "var(--text-secondary)",
                       }}
                     >
-                      {port.berths}
+                      {port.id === "SAGA" ? "N/A (STS)" : port.berths}
                     </div>
                     <div
                       style={{
@@ -353,6 +353,18 @@ export default function PortIntelligencePortal() {
                         animation: "slideUp 0.2s ease",
                       }}
                     >
+                      {port.id === "SAGA" && (
+                        <div style={{ padding: "0.75rem", background: "rgba(34,211,238,0.08)", border: "1px solid rgba(34,211,238,0.25)", borderRadius: 8, color: "var(--accent-cyan)", marginBottom: "0.875rem", fontSize: "0.75rem" }}>
+                          <Anchor size={12} style={{ display: "inline", marginRight: 4 }} />
+                          Sagar Sandheads is an offshore ship-to-ship (STS) lightering anchorage, not a berthing port. Capesize cargo must be lightered to Supramax/Handysize daughters.
+                        </div>
+                      )}
+                      {port.id === "HALD" && (
+                        <div style={{ padding: "0.75rem", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 8, color: "#ef4444", marginBottom: "0.875rem", fontSize: "0.75rem" }}>
+                          <AlertTriangle size={12} style={{ display: "inline", marginRight: 4 }} />
+                          Haldia Dock Complex is subjected to severe seasonal monsoonal silting. Draft is restricted from 8.8m down to 8.0m during June-October.
+                        </div>
+                      )}
                       <div
                         style={{
                           display: "grid",

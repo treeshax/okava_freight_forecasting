@@ -1,6 +1,16 @@
 /** Lightweight WebGL capability probe for the hero fallback decision. */
 export function isWebGLAvailable() {
   if (typeof window === "undefined") return false;
+
+  // Manual override for demos / debugging: ?webgl=off forces the CSS fallback.
+  try {
+    if (new URLSearchParams(window.location.search).get("webgl") === "off") {
+      return false;
+    }
+  } catch {
+    /* ignore */
+  }
+
   try {
     const canvas = document.createElement("canvas");
     return !!(

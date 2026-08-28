@@ -157,6 +157,10 @@ def forecast(route: str, vessel_class: str, horizon_days: int):
     fig, ax = plt.subplots(figsize=(7, 4))
     hist = sub.tail(20)
     ax.plot(hist["date"], hist["freight_rate"], marker="o", label="Historical rate")
+    ax.plot(
+        [latest["date"], future_date], [latest["freight_rate"], point],
+        linestyle="--", color="#ef4444", alpha=0.5, zorder=4,
+    )
     ax.scatter([future_date], [point], color="#ef4444", label="LightGBM forecast", zorder=5)
     ax.errorbar(
         [future_date], [point], yerr=[[point - ci_lower], [ci_upper - point]],

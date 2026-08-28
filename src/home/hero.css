@@ -32,6 +32,7 @@
   position: absolute;
   inset: 0;
   z-index: 0;
+  pointer-events: none; /* background scene never intercepts CTA clicks */
   background:
     radial-gradient(
       120% 90% at 78% 18%,
@@ -173,6 +174,7 @@
   inset: 0;
   overflow: hidden;
   background: #0a0714;
+  pointer-events: none; /* purely decorative — never intercept clicks */
 }
 
 .ciq-cssocean__sky {

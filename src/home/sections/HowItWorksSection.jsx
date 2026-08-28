@@ -40,9 +40,9 @@ const PILLARS = [
     Icon: ModelIcon,
     title: "Advanced AI model",
     points: [
-      "Filters draft and LOA limits to prune physically impossible vessel-port pairings",
-      "Predicts 30–90 day freight trends using explainable LightGBM and Prophet models",
-      "Signals optimal market entry (“book now” vs “wait”) to maximize landed savings",
+      "Rules out vessel–port pairings that break draft or LOA limits, so every recommendation is physically feasible",
+      "Predicts 30–90 day freight trends so you can act on the market weeks ahead",
+      "Signals when to book and when to wait, to maximize landed savings",
     ],
   },
   {

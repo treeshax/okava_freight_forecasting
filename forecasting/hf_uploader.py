@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 HF_TOKEN = os.getenv("HF_TOKEN")
 # Defaults to a user-specific namespace repository
-HF_REPO_ID = os.getenv("HF_REPO_ID", "abhinavsingh-hub/okava_charter_iq_models")
+HF_REPO_ID = os.getenv("HF_REPO_ID", "abhinavvsingh/okava_charter_iq_models")
 
 class HuggingFaceClient:
     def __init__(self):

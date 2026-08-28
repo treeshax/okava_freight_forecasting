@@ -48,19 +48,19 @@ def ingest_data_for_date(target_date: datetime.date):
     db = SessionLocal()
     try:
         # 1. Fetch market commodity price indices and bunkers
-        coal_prices = fetch_coal_prices()
-        bunkers = fetch_baltic_indices()
+        coal_prices = fetch_coal_prices(target_date)
+        bunkers = fetch_baltic_indices(target_date)
         vlsfo_price = coal_prices["API4"] * 5.5  # Approximate bunker fuel cost link from coal
-        
+
         # Ingest features per active route-vessel combo
         for origin, dest in ROUTES:
             # Weather & Congestion are destination / origin specific
-            origin_weather = fetch_weather_alert(origin)
-            dest_weather = fetch_weather_alert(dest)
+            origin_weather = fetch_weather_alert(origin, target_date)
+            dest_weather = fetch_weather_alert(dest, target_date)
             weather_alert = origin_weather or dest_weather
-            
-            dest_congestion = fetch_ais_congestion(dest)
-            geopolitics = fetch_gdelt_geopolitical_index(origin)
+
+            dest_congestion = fetch_ais_congestion(dest, target_date)
+            geopolitics = fetch_gdelt_geopolitical_index(origin, target_date)
             
             for vessel in VESSEL_CLASSES:
                 # Estimate voyage rate ($/MT)

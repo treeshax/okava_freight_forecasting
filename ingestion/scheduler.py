@@ -108,21 +108,80 @@ def ingest_data_for_date(target_date: datetime.date):
     finally:
         db.close()
 
-def seed_historical_features(days_back: int = 40):
+def seed_historical_features(days_back: int = 365):
     """
-    Backfills historical database records for modeling engines.
+    Backfills historical database records for modeling engines using batch bulk commits.
+    Default depth is 365 days to capture annual and monsoon seasonal cycles.
     """
     logger.info(f"Backfilling {days_back} days of historical operational features...")
     init_db()
+    db = SessionLocal()
     today = datetime.utcnow().date()
-    for i in range(days_back, -1, -1):
-        target = today - timedelta(days=i)
-        ingest_data_for_date(target)
+    
+    try:
+        # Check existing dates in feature store
+        existing_dates = set(r[0] for r in db.query(FeatureStore.date).distinct().all())
+        batch = []
+        total_inserted = 0
+
+        for i in range(days_back, -1, -1):
+            target = today - timedelta(days=i)
+            if target in existing_dates:
+                continue
+
+            coal_prices = fetch_coal_prices(target)
+            bunkers = fetch_baltic_indices(target)
+            vlsfo_price = coal_prices["API4"] * 5.5
+
+            for origin, dest in ROUTES:
+                origin_weather = fetch_weather_alert(origin, target)
+                dest_weather = fetch_weather_alert(dest, target)
+                weather_alert = origin_weather or dest_weather
+                dest_congestion = fetch_ais_congestion(dest, target)
+                geopolitics = fetch_gdelt_geopolitical_index(origin, target)
+
+                for vessel in VESSEL_CLASSES:
+                    derived_rate = estimate_voyage_rate(
+                        origin=origin,
+                        destination=dest,
+                        vessel_class=vessel,
+                        baltic_indices=bunkers,
+                        vlsfo_price=vlsfo_price
+                    )
+                    batch.append(FeatureStore(
+                        date=target,
+                        origin=origin,
+                        destination=dest,
+                        vessel_class=vessel,
+                        freight_rate=derived_rate,
+                        congestion=dest_congestion,
+                        weather_alert=weather_alert,
+                        geopolitics_index=geopolitics,
+                        fuel_cost=vlsfo_price
+                    ))
+
+            if len(batch) >= 1500:
+                db.bulk_save_objects(batch)
+                db.commit()
+                total_inserted += len(batch)
+                batch = []
+
+        if batch:
+            db.bulk_save_objects(batch)
+            db.commit()
+            total_inserted += len(batch)
+
+        logger.info(f"Seeding complete: {total_inserted} new historical records added to feature store.")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Seeding historical features failed: {e}")
+    finally:
+        db.close()
 
 if __name__ == "__main__":
-    # If run standalone, seed history first and then boot scheduler
+    # If run standalone, seed 365 days of history first and then boot scheduler
     logger.info("Initializing Database and Ingestion Engine...")
-    seed_historical_features(days_back=35)
+    seed_historical_features(days_back=365)
     
     scheduler = BlockingScheduler()
     # Ingest daily at midnight

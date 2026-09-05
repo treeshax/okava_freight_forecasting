@@ -25,6 +25,16 @@ SCALE_ADJUSTMENTS = {
     "handysize": 1.40
 }
 
+import math
+
+# Cargo capacity thresholds for parcel sizing & deadfreight modeling
+VESSEL_CAPACITY_LIMITS = {
+    "capesize": {"min_cargo": 100000, "max_cargo": 180000, "optimal": 150000},
+    "panamax": {"min_cargo": 55000, "max_cargo": 85000, "optimal": 75000},
+    "supramax": {"min_cargo": 40000, "max_cargo": 65000, "optimal": 55000},
+    "handysize": {"min_cargo": 20000, "max_cargo": 42000, "optimal": 35000}
+}
+
 # Standard Port Tariffs ($ flat rate)
 PORT_DISCHARGE_TARIFFS = {
     "PRDP": 85000,
@@ -52,9 +62,10 @@ def rank_eligible_vessels(
     laycan_start: Any
 ) -> List[Dict[str, Any]]:
     """
-    Filters vessels via the Rule Engine and ranks them by total effective cost.
+    Filters vessels via the Rule Engine and ranks them by total effective cost,
+    factoring in parcel sizes, multi-voyage splitting, and deadfreight penalties.
     Returns:
-        rankings (List[dict]): List of ranked vessel matches with cost breakdowns.
+        rankings (List[dict]): List of ranked vessel matches with cost breakdowns and AI agent rationales.
     """
     predictor = FreightPredictor()
     results = []
@@ -81,51 +92,81 @@ def rank_eligible_vessels(
         fc_res = predictor.predict_freight(origin, destination, vessel_class, horizon_days=14)
         base_rate = fc_res.get("point_forecast", 16.50)
         
-        # C. Cost breakdowns
+        # C. Parcel sizing & multi-voyage modeling
+        cap = VESSEL_CAPACITY_LIMITS.get(vessel_class, {"min_cargo": 30000, "max_cargo": 75000})
+        num_voyages = max(1, math.ceil(volume / cap["max_cargo"]))
+        
+        # Deadfreight penalty if cargo is far below vessel minimum payload
+        deadfreight_penalty = 0.0
+        if volume < cap["min_cargo"]:
+            deadfreight_penalty = (cap["min_cargo"] - volume) * base_rate * 0.40
+        
         # 1. Base Freight cost
         freight_cost = base_rate * volume
         
-        # 2. Port Discharge & Pilotage Tariffs
-        discharge_cost = PORT_DISCHARGE_TARIFFS.get(destination, 60000)
+        # 2. Port Discharge & Pilotage Tariffs (scales with number of port calls)
+        discharge_cost = PORT_DISCHARGE_TARIFFS.get(destination, 60000) * num_voyages
         
         # 3. Idle Delay Cost
-        # Base expected port stay (5 days) + extra days based on AIS congestion queue (congestion / 2)
         congestion_days = congestion_score / 2.0
         weather_delay = 3.0 if any("WEATHER_WARNING" in r for r in rule_reasons) else 0.0
         total_delay_days = congestion_days + weather_delay
         daily_rate = VESSEL_DAILY_HIRE.get(vessel_class, 15000)
-        idle_delay_cost = total_delay_days * daily_rate
+        idle_delay_cost = total_delay_days * daily_rate * num_voyages
         
         # 4. Geopolitical Risk Premium
-        # If GDELT news index indicates high tension (>40), apply a war-risk/insurance surcharge
         geopol_premium = 0.0
         if geopolitics_index > 40.0:
-            # 1.50 USD/MT risk premium on high tension routes
             geopol_premium = 1.50 * volume
-        elif origin == "VOST": # Russia sanction risk premium
+        elif origin == "VOST":
             geopol_premium = 5.00 * volume
             
         # 5. Economies of Scale adjustment
         scale_adj = SCALE_ADJUSTMENTS.get(vessel_class, 0.0) * volume
         
         # D. Calculate Total Effective Cost
-        effective_cost = freight_cost + discharge_cost + idle_delay_cost + geopol_premium + scale_adj
+        effective_cost = freight_cost + discharge_cost + idle_delay_cost + geopol_premium + scale_adj + deadfreight_penalty
         effective_cost_per_tonne = effective_cost / volume
+
+        # AI Agent Reasoning per class
+        if num_voyages > 1:
+            rationale = f"Requires {num_voyages} voyages for {volume:,.0f} MT cargo; splits port turnaround & idle delays."
+        elif deadfreight_penalty > 0:
+            rationale = f"Vessel capacity under-utilized; incurs ${deadfreight_penalty:,.0f} deadfreight on {volume:,.0f} MT parcel."
+        elif vessel_class == "capesize":
+            rationale = f"Max economies of scale in a single voyage. Deepwater draft at {destination} verified."
+        elif vessel_class == "panamax":
+            rationale = f"Optimal parcel fit ({volume:,.0f} MT) with full coastal Indian draft flexibility."
+        elif vessel_class == "supramax":
+            rationale = f"Geared flexibility; ideal for mid-tier bulk parcels with fast port turnaround."
+        else:
+            rationale = f"Direct entry permitted for draft-restricted port; zero deadfreight on small parcel."
         
         results.append({
             "vessel_class": vessel_class.capitalize(),
             "effective_cost": round(effective_cost, 2),
             "effective_cost_per_tonne": round(effective_cost_per_tonne, 2),
+            "num_voyages": num_voyages,
             "cost_breakdown": {
                 "base_freight": round(freight_cost, 2),
                 "port_turnaround": round(discharge_cost, 2),
                 "idle_delay": round(idle_delay_cost, 2),
                 "geopolitical_premium": round(geopol_premium, 2),
-                "scale_adjustment": round(scale_adj, 2)
+                "scale_adjustment": round(scale_adj, 2),
+                "deadfreight": round(deadfreight_penalty, 2)
             },
-            "warnings": [r for r in rule_reasons if not r.startswith("REJECT_")]
+            "warnings": [r for r in rule_reasons if not r.startswith("REJECT_")],
+            "rationale": rationale
         })
         
     # Sort rankings: lowest effective cost first
     rankings = sorted(results, key=lambda x: x["effective_cost"])
+    
+    # Attach top AI agent decision
+    if rankings:
+        best = rankings[0]
+        runner_up = rankings[1] if len(rankings) > 1 else None
+        diff_str = f"Saves ${runner_up['effective_cost_per_tonne'] - best['effective_cost_per_tonne']:.2f}/MT vs #{2} {runner_up['vessel_class']}." if runner_up else ""
+        best["ai_agent_decision"] = f"AI Chartering Agent selects {best['vessel_class']}: {best['rationale']} {diff_str}"
+        
     return rankings

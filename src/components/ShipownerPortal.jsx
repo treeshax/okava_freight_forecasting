@@ -225,7 +225,7 @@ export default function ShipownerPortal() {
         </div>
 
         {filtered.map(t => (
-          <div key={t.id} className="table-row" style={{ gridTemplateColumns: TENDER_COLS }}>
+          <div key={t.id} className="table-row" style={{ display: 'grid', gridTemplateColumns: TENDER_COLS, alignItems: 'center' }}>
             <div>
               <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontFamily: 'monospace', marginBottom: 2 }}>{t.id}</div>
               <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 3 }}>{t.commodity}</div>
@@ -290,7 +290,7 @@ export default function ShipownerPortal() {
             </div>
 
             {filteredFleet.map(v => (
-              <div key={v.id} className="table-row" style={{ gridTemplateColumns: FLEET_COLS }}>
+              <div key={v.id} className="table-row" style={{ display: 'grid', gridTemplateColumns: FLEET_COLS, alignItems: 'center' }}>
                 <div>
                   <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>{v.name}</div>
                   <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{v.flag} {v.imo}</div>

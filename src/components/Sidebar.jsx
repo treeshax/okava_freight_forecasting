@@ -64,11 +64,13 @@ export default function Sidebar({ activePortal, setActivePortal }) {
               borderLeft: isActive
                 ? "3px solid var(--accent-primary)"
                 : "3px solid transparent",
+              borderTop: "none",
+              borderRight: "none",
+              borderBottom: "none",
               background: isActive ? "rgba(148,163,184,0.12)" : "transparent",
               color: isActive
                 ? "var(--accent-primary)"
                 : "var(--text-secondary)",
-              border: "none",
               textAlign: "left",
               cursor: "pointer",
               width: "100%",
@@ -105,11 +107,23 @@ export default function Sidebar({ activePortal, setActivePortal }) {
       })}
       <div style={{ marginTop: "auto" }}>
         <div
+          onClick={() => setActivePortal("port")}
+          title="Click to view Port Constraints & Risk Matrix"
           style={{
             padding: "0.75rem",
             borderRadius: "10px",
-            background: "rgba(148,163,184,0.07)",
-            border: "1px solid var(--border-color)",
+            background: activePortal === "port" ? "rgba(56, 189, 248, 0.12)" : "rgba(148,163,184,0.07)",
+            border: activePortal === "port" ? "1px solid var(--accent-primary)" : "1px solid var(--border-color)",
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-1px)";
+            e.currentTarget.style.borderColor = "var(--accent-primary)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.borderColor = activePortal === "port" ? "var(--accent-primary)" : "var(--border-color)";
           }}
         >
           <Globe
@@ -128,7 +142,7 @@ export default function Sidebar({ activePortal, setActivePortal }) {
             India East Coast
             <br />
             <span style={{ color: "var(--accent-green)", fontWeight: 600 }}>
-              6 Ports Active
+              6 Ports Active ➔
             </span>
           </div>
         </div>

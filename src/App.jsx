@@ -1,15 +1,23 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import ImporterPortal from "./components/ImporterPortal";
 import AnalyticsPortal from "./components/AnalyticsPortal";
 import PortIntelligencePortal from "./components/PortIntelligencePortal";
+import AgentCopilot from "./components/AgentCopilot";
 import { DEMO_SCENARIOS } from "./data/mockData";
 
 export default function App() {
   const [activePortal, setActivePortal] = useState("importer");
   const [theme, setTheme] = useState("dark");
   const [scenario, setScenario] = useState(null);
+
+  useEffect(() => {
+    const mainEl = document.querySelector(".app-main");
+    if (mainEl) {
+      mainEl.scrollTo({ top: 0, behavior: "instant" });
+    }
+  }, [activePortal]);
 
   const toggleTheme = () => {
     setTheme((prev) => {
@@ -29,7 +37,7 @@ export default function App() {
       case "analytics":
         return <AnalyticsPortal />;
       case "port":
-        return <PortIntelligencePortal />;
+        return <PortIntelligencePortal setActivePortal={setActivePortal} setScenario={setScenario} />;
       default:
         return <ImporterPortal />;
     }
@@ -70,6 +78,7 @@ export default function App() {
           )}
         </main>
       </div>
+      <AgentCopilot />
     </div>
   );
 }

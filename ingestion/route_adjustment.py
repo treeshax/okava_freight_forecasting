@@ -108,7 +108,7 @@ def estimate_voyage_rate(
     # Derive rate per ton
     voyage_rate_per_ton = total_voyage_cost / specs["capacity_mt"]
     
-    logger.info(
+    logger.debug(
         f"AUDIT LOG | Route: {origin}->{destination} | Vessel: {vessel_class} | "
         f"Dist: {dist}nm | Sea Days: {sea_days:.2f} | Port Days: {port_days} | "
         f"Daily Hire: ${daily_hire:.2f} (Index {idx_name}={idx_val}) | "

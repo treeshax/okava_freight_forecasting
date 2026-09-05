@@ -68,33 +68,43 @@ PORT_COORDINATES = {
 
 def fetch_weather_alert(port_id: str, target_date: date) -> bool:
     """
-    Queries Open-Meteo API for wind gusts/speeds and checks for stormy weather alerts.
+    Queries Open-Meteo API for wind gusts/speeds for current dates,
+    or generates deterministic seasonal weather for historical dates.
     """
     coords = PORT_COORDINATES.get(port_id)
     if not coords:
         return False
-    try:
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={coords['lat']}&longitude={coords['lon']}&hourly=windspeed_10m,precipitation&forecast_days=1"
-        res = requests.get(url, timeout=10)
-        if res.status_code == 200:
-            data = res.json()
-            wind_speeds = data.get("hourly", {}).get("windspeed_10m", [0])
-            precipitation = data.get("hourly", {}).get("precipitation", [0])
-            avg_wind = sum(wind_speeds) / len(wind_speeds) if wind_speeds else 0
-            avg_precip = sum(precipitation) / len(precipitation) if precipitation else 0
-            # Flag alert if average wind exceeds 25 km/h or average precipitation exceeds 2mm/h
-            return avg_wind > 25.0 or avg_precip > 2.0
-    except Exception as e:
-        logger.warning(f"Failed to fetch real weather for {port_id}: {e}. Returning fallback.")
-    # Fallback: deterministic per (port, date) draw so backfills/reruns don't reshuffle
-    base_prob = 0.15 if port_id in ["MBOZ", "SAMA"] else 0.05
+
+    # Only attempt live external API call for current/future dates
+    if target_date >= date.today():
+        try:
+            url = f"https://api.open-meteo.com/v1/forecast?latitude={coords['lat']}&longitude={coords['lon']}&hourly=windspeed_10m,precipitation&forecast_days=1"
+            res = requests.get(url, timeout=1.5)
+            if res.status_code == 200:
+                data = res.json()
+                wind_speeds = data.get("hourly", {}).get("windspeed_10m", [0])
+                precipitation = data.get("hourly", {}).get("precipitation", [0])
+                avg_wind = sum(wind_speeds) / len(wind_speeds) if wind_speeds else 0
+                avg_precip = sum(precipitation) / len(precipitation) if precipitation else 0
+                return avg_wind > 25.0 or avg_precip > 2.0
+        except Exception:
+            pass  # Fall through to deterministic seasonal simulator
+
+    # Deterministic seasonal fallback:
+    is_monsoon = target_date.month in [6, 7, 8, 9, 10]
+    if is_monsoon and port_id in ["PRDP", "HALD", "VIZG", "SAGA", "DHMR"]:
+        base_prob = 0.22  # Bay of Bengal monsoon cyclone season
+    elif port_id in ["MBOZ", "SAMA"]:
+        base_prob = 0.15
+    else:
+        base_prob = 0.05
     rng = np.random.default_rng(abs(hash(("weather", port_id, target_date))) % (2**32))
     return bool(rng.random() < base_prob)
 
 def fetch_gdelt_geopolitical_index(port_id: str, target_date: date) -> float:
     """
-    Fetches geopolitical event risk spikes using GDELT Project REST queries.
-    Returns a normalized rolling index of tension news volume.
+    Fetches geopolitical event risk spikes using GDELT Project REST queries for current date,
+    or generates deterministic Ornstein-Uhlenbeck series for historical dates.
     """
     keywords = {
         "NCWL": "Australia trade",
@@ -105,20 +115,21 @@ def fetch_gdelt_geopolitical_index(port_id: str, target_date: date) -> float:
         "RBCT": "South Africa port strike"
     }
     keyword = keywords.get(port_id, "maritime shipping")
-    try:
-        # GDELT Context Search API
-        url = f"https://api.gdeltproject.org/api/v2/doc/doc?query={keyword}&mode=timelinevol&format=json"
-        res = requests.get(url, timeout=10)
-        if res.status_code == 200:
-            data = res.json()
-            timeline = data.get("timeline", [{}])[0].get("data", [])
-            if timeline:
-                latest_value = timeline[-1].get("value", 0.0)
-                return float(latest_value) * 100.0  # Normalize
-    except Exception as e:
-        logger.warning(f"Failed to fetch GDELT data for {port_id}: {e}. Using baseline fallback.")
+
+    if target_date >= date.today():
+        try:
+            url = f"https://api.gdeltproject.org/api/v2/doc/doc?query={keyword}&mode=timelinevol&format=json"
+            res = requests.get(url, timeout=1.5)
+            if res.status_code == 200:
+                data = res.json()
+                timeline = data.get("timeline", [{}])[0].get("data", [])
+                if timeline:
+                    latest_value = timeline[-1].get("value", 0.0)
+                    return float(latest_value) * 100.0  # Normalize
+        except Exception:
+            pass  # Fall through to deterministic walk
+
     # Fallback tension levels: mean-reverting walk with occasional spike events
-    # (sanctions news, strikes, etc.) instead of flat noise around a baseline.
     baselines = {
         "VOST": 85.0,  # Russia sanctions baseline
         "MBOZ": 38.0,  # Mozambique local risk
@@ -179,6 +190,9 @@ def fetch_ais_congestion(port_id: str, target_date: date) -> int:
         "GPPR": 4.0,   # Gopalpur
     }
     long_run_mean = baselines.get(port_id, 10.0)
+    if target_date.month in [6, 7, 8, 9] and port_id in ["HALD", "PRDP", "SAGA"]:
+        long_run_mean *= 1.30  # Monsoon silting and swell anchorage surge
+
     level = _mean_reverting_walk(
         f"congestion:{port_id}", target_date, long_run_mean,
         mean_reversion=0.08, daily_vol=0.06, shock_prob=0.05, shock_vol=0.30,

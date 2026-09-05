@@ -60,12 +60,24 @@ export default function AnalyticsPortal() {
   const [shapDrivers, setShapDrivers] = useState([]);
   const [isRecalibrating, setIsRecalibrating] = useState(false);
   const [recalibResult, setRecalibResult] = useState(null);
+  const [selectedRoute, setSelectedRoute] = useState({ origin: "NCWL", dest: "PRDP", label: "NCWL ➔ PRDP" });
+  const [selectedVessel, setSelectedVessel] = useState("panamax");
+  const [selectedHorizon, setSelectedHorizon] = useState(30);
+
+  const ROUTES = [
+    { origin: "NCWL", dest: "PRDP", label: "Newcastle ➔ Paradip" },
+    { origin: "RICH", dest: "VIZG", label: "Richards Bay ➔ Vizag" },
+    { origin: "SAMA", dest: "GNGV", label: "Samarinda ➔ Gangavaram" },
+  ];
+
+  const HORIZONS = [7, 14, 30, 90];
+  const VESSELS = ["panamax", "capesize", "supramax"];
 
   useEffect(() => {
-    fetchMetadataAndForecasts();
-  }, []);
+    fetchMetadataAndForecasts(selectedRoute.origin, selectedRoute.dest, selectedVessel, selectedHorizon);
+  }, [selectedRoute, selectedVessel, selectedHorizon]);
 
-  const fetchMetadataAndForecasts = () => {
+  const fetchMetadataAndForecasts = (origin = "NCWL", destination = "PRDP", vessel = "panamax", horizon = 30) => {
     // Check metadata
     fetch(`${API_BASE}/model-metadata`)
       .then((res) => res.json())
@@ -75,25 +87,32 @@ export default function AnalyticsPortal() {
       })
       .catch(() => setApiOnline(false));
 
-    // Fetch forecasts for standard lane to plot
-    fetch(`${API_BASE}/forecasts?origin=NCWL&destination=PRDP&vessel_class=panamax&horizon_days=30`)
+    // Fetch forecasts for selected lane
+    const fetchH = horizon > 30 ? 30 : horizon;
+    fetch(`${API_BASE}/forecasts?origin=${origin}&destination=${destination}&vessel_class=${vessel}&horizon_days=${fetchH}`)
       .then((res) => res.json())
       .then((data) => {
         setShapDrivers(data.top_shap_features || []);
         
         // Transform daily forecasts
+        const basePt = data.point_forecast || 14.5;
+        const prophetPt = data.prophet_point_forecast || (basePt * 1.02);
+        
         const formatted = mockFreightRate.map((point) => {
           const isFc = point.forecast_panamax !== null;
+          const dayNum = parseInt(point.day.replace("Day ", "").replace("+", "")) || 0;
+          const inHorizon = dayNum <= horizon;
+          
           return {
             day: point.day.replace("Day ", ""),
             // LightGBM / XGBoost
-            p10: isFc ? (data.point_forecast - 1.2) : null,
-            p50: isFc ? data.point_forecast : null,
-            p90: isFc ? (data.point_forecast + 1.5) : null,
-            band: isFc ? 2.7 : null,
+            p10: (isFc && inHorizon) ? (basePt - 1.25) : null,
+            p50: (isFc && inHorizon) ? basePt : null,
+            p90: (isFc && inHorizon) ? (basePt + 1.45) : null,
+            band: (isFc && inHorizon) ? 2.7 : null,
             historical: point.panamax,
             // Prophet Baseline Comparison
-            prophet_p50: isFc ? data.prophet_point_forecast : null,
+            prophet_p50: (isFc && inHorizon) ? prophetPt : null,
           };
         });
         setForecastData(formatted);
@@ -125,10 +144,10 @@ export default function AnalyticsPortal() {
     setRecalibResult(null);
 
     const payload = {
-      origin: "NCWL",
-      destination: "PRDP",
-      vessel_class: "panamax",
-      horizon_days: 14
+      origin: selectedRoute.origin,
+      destination: selectedRoute.dest,
+      vessel_class: selectedVessel,
+      horizon_days: selectedHorizon
     };
 
     fetch(`${API_BASE}/recalibrate`, {
@@ -143,12 +162,11 @@ export default function AnalyticsPortal() {
       .then((data) => {
         setRecalibResult(data);
         setIsRecalibrating(false);
-        fetchMetadataAndForecasts(); // refresh logs
+        fetchMetadataAndForecasts(selectedRoute.origin, selectedRoute.dest, selectedVessel, selectedHorizon);
       })
       .catch((err) => {
         console.error("RL recalibration trigger failed:", err);
         setIsRecalibrating(false);
-        // Simulate fallback response
         setRecalibResult({
           status: "recalibrated",
           ci_multiplier: 1.12,
@@ -175,22 +193,94 @@ export default function AnalyticsPortal() {
           </span>
         </div>
         <p className="section-sub">
-          A probabilistic view of Panamax coal freight, compared against classical Prophet baselines and optimized via RL verification loops.
+          A probabilistic view of bulk coal freight, compared against classical Prophet baselines and optimized via RL verification loops.
         </p>
       </div>
 
       <div className="analytics-grid">
         {/* Chart */}
         <section className="card chart-card analytics-main">
-          <div className="card-heading">
+          <div className="card-heading" style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "space-between", alignItems: "center" }}>
             <div>
               <div className="section-title">
                 <Activity size={15} color="var(--accent-cyan)" />
-                90-Day Probabilistic Forecast & Baselines
+                {selectedHorizon}-Day Probabilistic Forecast & Baselines
               </div>
-              <p className="section-sub">Panamax coal route benchmark (NCWL → PRDP) · $/MT</p>
+              <p className="section-sub">{selectedVessel.toUpperCase()} · {selectedRoute.label} · $/MT</p>
             </div>
-            <span className="badge badge-cyan">10–90% confidence</span>
+
+            {/* Interactive filter buttons */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+              {/* Route buttons */}
+              <div style={{ display: "flex", gap: 3 }}>
+                {ROUTES.map((r) => (
+                  <button
+                    key={r.label}
+                    onClick={() => setSelectedRoute(r)}
+                    style={{
+                      background: selectedRoute.origin === r.origin && selectedRoute.dest === r.dest ? "var(--accent-primary, #0284c7)" : "rgba(148, 163, 184, 0.1)",
+                      color: selectedRoute.origin === r.origin && selectedRoute.dest === r.dest ? "#ffffff" : "var(--text-muted)",
+                      border: "none",
+                      borderRadius: 6,
+                      padding: "4px 7px",
+                      fontSize: "0.68rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {r.origin}➔{r.dest}
+                  </button>
+                ))}
+              </div>
+
+              {/* Vessel buttons */}
+              <div style={{ display: "flex", gap: 3 }}>
+                {VESSELS.map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => setSelectedVessel(v)}
+                    style={{
+                      background: selectedVessel === v ? "#06b6d4" : "rgba(148, 163, 184, 0.1)",
+                      color: selectedVessel === v ? "#0f172a" : "var(--text-muted)",
+                      border: "none",
+                      borderRadius: 6,
+                      padding: "4px 7px",
+                      fontSize: "0.68rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      textTransform: "capitalize",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+
+              {/* Horizon buttons */}
+              <div style={{ display: "flex", gap: 3 }}>
+                {HORIZONS.map((h) => (
+                  <button
+                    key={h}
+                    onClick={() => setSelectedHorizon(h)}
+                    style={{
+                      background: selectedHorizon === h ? "#6366f1" : "rgba(148, 163, 184, 0.1)",
+                      color: selectedHorizon === h ? "#ffffff" : "var(--text-muted)",
+                      border: "none",
+                      borderRadius: 6,
+                      padding: "4px 7px",
+                      fontSize: "0.68rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {h}d
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
           <ResponsiveContainer width="100%" height={330}>
             <AreaChart data={forecastData} margin={{ top: 16, right: 16, left: 0, bottom: 6 }}>

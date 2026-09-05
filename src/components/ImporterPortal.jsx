@@ -27,6 +27,7 @@ import {
   ArrowRight,
   UserCheck,
   UserX,
+  Sparkles,
 } from "lucide-react";
 import {
   COMMODITIES,
@@ -136,7 +137,7 @@ const RiskRow = ({ label, level, value, Icon }) => {
 };
 
 /* ── AI Results Detail Panel ───────────────── */
-const AIResults = ({ formData, rankings }) => {
+const AIResults = ({ formData, rankings, aiAgentDecision }) => {
   const isRussianRoute = formData.originPort === "VOST";
 
   return (
@@ -181,7 +182,12 @@ const AIResults = ({ formData, rankings }) => {
                   </strong>
                   {idx === 0 && (
                     <span className="badge badge-cyan" style={{ marginLeft: 8 }}>
-                      Best Match
+                      <Sparkles size={11} style={{ marginRight: 3 }} /> AI Optimal
+                    </span>
+                  )}
+                  {rank.num_voyages > 1 && (
+                    <span className="badge badge-purple" style={{ marginLeft: 6 }}>
+                      {rank.num_voyages} Voyages
                     </span>
                   )}
                 </div>
@@ -224,11 +230,11 @@ const AIResults = ({ formData, rankings }) => {
                 }}
               >
                 {[
-                  { label: "Base Freight", value: `$${rank.cost_breakdown.base_freight.toLocaleString()}` },
-                  { label: "Port Tariff", value: `$${rank.cost_breakdown.port_turnaround.toLocaleString()}` },
-                  { label: "Idle Delay", value: `$${rank.cost_breakdown.idle_delay.toLocaleString()}` },
-                  { label: "Risk Premium", value: `$${rank.cost_breakdown.geopolitical_premium.toLocaleString()}` },
-                  { label: "Scale Adjustment", value: `$${rank.cost_breakdown.scale_adjustment.toLocaleString()}` },
+                  { label: "Base Freight", value: `$${rank.cost_breakdown?.base_freight?.toLocaleString() ?? 0}` },
+                  { label: "Port Tariff", value: `$${rank.cost_breakdown?.port_turnaround?.toLocaleString() ?? 0}` },
+                  { label: "Idle Delay", value: `$${rank.cost_breakdown?.idle_delay?.toLocaleString() ?? 0}` },
+                  { label: "Risk Premium", value: `$${rank.cost_breakdown?.geopolitical_premium?.toLocaleString() ?? 0}` },
+                  { label: "Scale/Deadfrt", value: `$${((rank.cost_breakdown?.scale_adjustment || 0) + (rank.cost_breakdown?.deadfreight || 0)).toLocaleString()}` },
                 ].map((item, i) => (
                   <div key={i} style={{ textAlign: "center" }}>
                     <div style={{ fontSize: "0.55rem", color: "var(--text-muted)", textTransform: "uppercase" }}>
@@ -240,6 +246,12 @@ const AIResults = ({ formData, rankings }) => {
                   </div>
                 ))}
               </div>
+
+              {rank.rationale && (
+                <div style={{ marginTop: "0.6rem", fontSize: "0.72rem", color: "var(--text-muted)", fontStyle: "italic", borderTop: "1px dashed rgba(148,163,184,0.15)", paddingTop: "0.4rem" }}>
+                  🤖 <strong style={{ fontStyle: "normal", color: "var(--text-secondary)" }}>AI Insight:</strong> {rank.rationale}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -258,30 +270,40 @@ const AIResults = ({ formData, rankings }) => {
               marginBottom: "0.75rem",
             }}
           >
-            Match Specs
+            AI Agent Decision
           </div>
           <div
             style={{
               display: "flex",
-              alignItems: "baseline",
+              alignItems: "center",
+              justifyContent: "space-between",
               gap: 8,
-              marginBottom: 4,
+              marginBottom: 8,
             }}
           >
             <span style={{ fontSize: "1.4rem", fontWeight: 800, color: "var(--text-primary)" }}>
               {rankings[0]?.vessel_class || "Panamax"}
             </span>
+            <span className="badge badge-cyan" style={{ fontSize: "0.68rem" }}>
+              <Sparkles size={11} style={{ marginRight: 3 }} /> AI Recommended
+            </span>
           </div>
-          <p
+          <div
             style={{
-              fontSize: "0.75rem",
-              color: "var(--text-muted)",
-              lineHeight: 1.6,
-              marginBottom: "1rem",
+              padding: "0.65rem 0.85rem",
+              background: "rgba(34,211,238,0.06)",
+              border: "1px solid rgba(34,211,238,0.25)",
+              borderRadius: 8,
+              marginBottom: "0.85rem",
             }}
           >
-            Hard constraints verification completed. Vessel metrics aligned with draft limitations.
-          </p>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+              <strong style={{ fontSize: "0.72rem", color: "#22d3ee" }}>AI Agent Rationale:</strong>
+            </div>
+            <p style={{ fontSize: "0.72rem", color: "var(--text-secondary)", margin: 0, lineHeight: 1.5 }}>
+              {rankings[0]?.rationale || aiAgentDecision || "Selected by physical draft audit, parcel deadfreight sizing, and multi-horizon LightGBM rate optimization."}
+            </p>
+          </div>
 
           {isRussianRoute && (
             <div
@@ -364,22 +386,27 @@ const AIResults = ({ formData, rankings }) => {
   );
 };
 
+/* ── Default initial cargo scenario ────────── */
+const DEFAULT_CARGO = {
+  commodity: "Coking Coal",
+  volume: "75000",
+  originPort: "NCWL",
+  originPortName: "Newcastle, Australia",
+  destPort: "PRDP",
+  destPortName: "Paradip Port",
+  laycanStart: "2026-09-15",
+  laycanEnd: "2026-09-25",
+};
+
 /* ── Main component ────────────────────────── */
 export default function ImporterPortal({ scenario }) {
   const [formData, setFormData] = useState({
-    commodity: "",
-    originPort: "",
-    destPort: "",
-    volume: "",
-    laycanStart: "",
-    laycanEnd: "",
-    originPortName: "",
-    destPortName: "",
+    ...DEFAULT_CARGO,
     ...scenario,
   });
   
   const [isRunning, setIsRunning] = useState(false);
-  const [showResults, setShowResults] = useState(Boolean(scenario));
+  const [showResults, setShowResults] = useState(true);
   const [chartTab, setChartTab] = useState("30d");
   
   // API variables state
@@ -387,6 +414,7 @@ export default function ImporterPortal({ scenario }) {
   const [forecasts, setForecasts] = useState([]);
   const [rankings, setRankings] = useState([]);
   const [riskData, setRiskData] = useState(null);
+  const [aiAgentDecision, setAiAgentDecision] = useState("");
   
   // Human in the Loop decisions
   const [hitlStatus, setHitlStatus] = useState("pending_review"); // pending_review | accepted | overridden
@@ -404,11 +432,10 @@ export default function ImporterPortal({ scenario }) {
     fetchOverrides();
   }, []);
 
-  // Fetch scenarios on load if pre-selected
+  // Fetch scenarios and run initial optimization on load
   useEffect(() => {
-    if (scenario) {
-      handleRun();
-    }
+    const targetData = scenario ? { ...DEFAULT_CARGO, ...scenario } : DEFAULT_CARGO;
+    handleRun(targetData);
   }, [scenario]);
 
   const fetchOverrides = () => {
@@ -418,21 +445,37 @@ export default function ImporterPortal({ scenario }) {
       .catch((err) => console.warning("Error fetching overrides history:", err));
   };
 
-  const handleRun = () => {
+  const handleRun = (customData = null) => {
+    const activeData = customData || formData;
+    const origin = activeData.originPort || "NCWL";
+    const dest = activeData.destPort || "PRDP";
+    const volNum = Number(activeData.volume) || 75000;
+    const comm = activeData.commodity || "Coking Coal";
+    const laycanStr = activeData.laycanStart || "2026-09-15";
+
+    if (!activeData.originPort || !activeData.destPort) {
+      setFormData((prev) => ({
+        ...prev,
+        originPort: origin,
+        originPortName: ORIGIN_PORTS.find((p) => p.id === origin)?.name || "Newcastle, Australia",
+        destPort: dest,
+        destPortName: DEST_PORTS.find((p) => p.id === dest)?.name || "Paradip Port",
+        volume: String(volNum),
+        commodity: comm,
+      }));
+    }
+
     setIsRunning(true);
     setShowResults(false);
     setHitlStatus("pending_review");
     setOverrideReason("");
 
     if (apiOnline) {
-      const laycanStr = formData.laycanStart || new Date().toISOString().split("T")[0];
-      const volNum = formData.volume || 75000;
-      
       // Execute concurrent requests to FastAPI Gateway
       Promise.all([
-        fetch(`${API_BASE}/forecasts?origin=${formData.originPort}&destination=${formData.destPort}&vessel_class=panamax&horizon_days=30`),
-        fetch(`${API_BASE}/vessel-port-rankings?origin=${formData.originPort}&destination=${formData.destPort}&volume=${volNum}&laycan_start=${laycanStr}`),
-        fetch(`${API_BASE}/idle-risk-alerts?origin=${formData.originPort}&destination=${formData.destPort}&vessel_class=panamax`)
+        fetch(`${API_BASE}/forecasts?origin=${origin}&destination=${dest}&vessel_class=panamax&horizon_days=30`),
+        fetch(`${API_BASE}/vessel-port-rankings?origin=${origin}&destination=${dest}&volume=${volNum}&laycan_start=${laycanStr}`),
+        fetch(`${API_BASE}/idle-risk-alerts?origin=${origin}&destination=${dest}&vessel_class=panamax`)
       ])
         .then(async ([fcRes, rankRes, riskRes]) => {
           const fc = await fcRes.json();
@@ -441,14 +484,13 @@ export default function ImporterPortal({ scenario }) {
 
           // Transform daily forecasts to match chart
           const rateData = mockFreightRate.map((point) => {
-            // Apply API derived calculations
             if (point.forecast_panamax !== null) {
               return {
                 ...point,
                 forecast_panamax: fc.point_forecast || point.forecast_panamax,
-                forecast_capesize: (fc.point_forecast * 1.25) || point.forecast_capesize,
-                forecast_supramax: (fc.point_forecast * 0.85) || point.forecast_supramax,
-                forecast_handysize: (fc.point_forecast * 0.65) || point.forecast_handysize,
+                forecast_capesize: (fc.point_forecast * 0.78) || point.forecast_capesize,
+                forecast_supramax: (fc.point_forecast * 1.10) || point.forecast_supramax,
+                forecast_handysize: (fc.point_forecast * 1.45) || point.forecast_handysize,
               };
             }
             return point;
@@ -456,6 +498,7 @@ export default function ImporterPortal({ scenario }) {
 
           setForecasts(rateData);
           setRankings(rk.rankings || []);
+          setAiAgentDecision(rk.ai_agent_decision || "");
           setRiskData(rs);
           
           setIsRunning(false);
@@ -463,33 +506,103 @@ export default function ImporterPortal({ scenario }) {
         })
         .catch((err) => {
           console.error("Backend fetch failed. Executing fallback.", err);
-          runMockFallback();
+          runMockFallback(activeData);
         });
     } else {
-      setTimeout(runMockFallback, 1500);
+      setTimeout(() => runMockFallback(activeData), 500);
     }
   };
 
   const runMockFallback = () => {
-    // Standard mock structure matching exact endpoints
-    const fallbackRankings = [
-      {
-        vessel_class: "Panamax",
-        effective_cost: 14.1 * (formData.volume || 75000) + 55000,
-        effective_cost_per_tonne: 14.8,
-        cost_breakdown: { base_freight: 14.1 * (formData.volume || 75000), port_turnaround: 55000, idle_delay: 15000, geopolitical_premium: 0, scale_adjustment: -60000 },
-        warnings: ["Congestion delay expected on discharge."]
-      },
-      {
-        vessel_class: "Supramax",
-        effective_cost: 12.0 * (formData.volume || 75000) + 42000,
-        effective_cost_per_tonne: 15.6,
-        cost_breakdown: { base_freight: 12.0 * (formData.volume || 75000), port_turnaround: 42000, idle_delay: 24000, geopolitical_premium: 0, scale_adjustment: 0 },
-        warnings: []
-      }
-    ];
+    const vol = Number(formData.volume) || 75000;
+    const dest = formData.destPort || "PRDP";
+
+    let fallbackRankings = [];
+    let agentDecision = "";
+
+    if (dest === "HALD") {
+      fallbackRankings = [
+        {
+          vessel_class: "Handysize",
+          effective_cost: 21.5 * vol + 60000,
+          effective_cost_per_tonne: 22.8,
+          num_voyages: Math.ceil(vol / 38000),
+          cost_breakdown: { base_freight: 21.5 * vol, port_turnaround: 60000, idle_delay: 18000, geopolitical_premium: 0, scale_adjustment: 0, deadfreight: 0 },
+          warnings: ["Haldia riverine draft limit (8.5m). Direct entry approved for Handysize."],
+          rationale: "Direct entry permitted within Haldia's riverine ceiling; Capesize/Panamax require lightering at Sagar Sandheads."
+        }
+      ];
+      agentDecision = "AI Chartering Agent selects Handysize: Only vessel class meeting Haldia's 8.5m riverine draft limit.";
+    } else if (vol >= 100000 && (dest === "GNGV" || dest === "DHMR")) {
+      fallbackRankings = [
+        {
+          vessel_class: "Capesize",
+          effective_cost: 7.8 * vol + 85000,
+          effective_cost_per_tonne: 8.4,
+          num_voyages: 1,
+          cost_breakdown: { base_freight: 7.8 * vol, port_turnaround: 85000, idle_delay: 25000, geopolitical_premium: 0, scale_adjustment: -220000, deadfreight: 0 },
+          warnings: [],
+          rationale: "Max economies of scale in 1 single voyage; deepwater draft verified."
+        },
+        {
+          vessel_class: "Panamax",
+          effective_cost: 10.5 * vol + 150000,
+          effective_cost_per_tonne: 11.6,
+          num_voyages: 2,
+          cost_breakdown: { base_freight: 10.5 * vol, port_turnaround: 150000, idle_delay: 35000, geopolitical_premium: 0, scale_adjustment: -80000, deadfreight: 0 },
+          warnings: ["Requires 2 separate voyages for this volume."],
+          rationale: "Requires 2 voyages for volume; incurs doubled port tariffs and queue delays."
+        }
+      ];
+      agentDecision = "AI Chartering Agent selects Capesize: Single voyage saves ~$3.20/MT over split Panamax voyages; deepwater draft verified.";
+    } else if (vol <= 40000) {
+      fallbackRankings = [
+        {
+          vessel_class: "Supramax",
+          effective_cost: 14.5 * vol + 50000,
+          effective_cost_per_tonne: 16.2,
+          num_voyages: 1,
+          cost_breakdown: { base_freight: 14.5 * vol, port_turnaround: 50000, idle_delay: 15000, geopolitical_premium: 0, scale_adjustment: 0, deadfreight: 0 },
+          warnings: [],
+          rationale: "Optimal for smaller parcels; zero deadfreight penalty vs Panamax under-utilization."
+        },
+        {
+          vessel_class: "Panamax",
+          effective_cost: 11.0 * vol + 85000 + 75000,
+          effective_cost_per_tonne: 18.5,
+          num_voyages: 1,
+          cost_breakdown: { base_freight: 11.0 * vol, port_turnaround: 85000, idle_delay: 20000, geopolitical_premium: 0, scale_adjustment: -30000, deadfreight: 75000 },
+          warnings: ["Under-utilized capacity incurs deadfreight penalty."],
+          rationale: "Vessel capacity under-utilized; incurs deadfreight penalty on small parcel."
+        }
+      ];
+      agentDecision = "AI Chartering Agent selects Supramax: Best parcel deadweight utilization; saves deadfreight penalty.";
+    } else {
+      fallbackRankings = [
+        {
+          vessel_class: "Panamax",
+          effective_cost: 10.5 * vol + 75000,
+          effective_cost_per_tonne: 11.5,
+          num_voyages: 1,
+          cost_breakdown: { base_freight: 10.5 * vol, port_turnaround: 75000, idle_delay: 20000, geopolitical_premium: 0, scale_adjustment: -60000, deadfreight: 0 },
+          warnings: [],
+          rationale: "Optimal parcel match (75K MT) with full coastal Indian draft flexibility."
+        },
+        {
+          vessel_class: "Supramax",
+          effective_cost: 12.5 * vol + 120000,
+          effective_cost_per_tonne: 14.2,
+          num_voyages: 2,
+          cost_breakdown: { base_freight: 12.5 * vol, port_turnaround: 120000, idle_delay: 28000, geopolitical_premium: 0, scale_adjustment: 0, deadfreight: 0 },
+          warnings: ["Requires 2 voyages for volume."],
+          rationale: "Requires 2 voyages to carry full volume."
+        }
+      ];
+      agentDecision = "AI Chartering Agent selects Panamax: Maximum cost efficiency for 75K MT parcel across Indian East Coast ports.";
+    }
 
     setRankings(fallbackRankings);
+    setAiAgentDecision(agentDecision);
     setForecasts(mockFreightRate);
     setRiskData({
       status: formData.originPort === "VOST" ? "RED" : (formData.originPort === "RICH" ? "AMBER" : "GREEN"),
@@ -546,6 +659,37 @@ export default function ImporterPortal({ scenario }) {
   const isRichardsBay = formData.originPort === "RICH";
   const isRussianRoute = formData.originPort === "VOST";
   
+  const handleReset = () => {
+    setFormData({
+      commodity: "",
+      originPort: "",
+      destPort: "",
+      volume: "75000",
+      laycanStart: "",
+      laycanEnd: "",
+      originPortName: "",
+      destPortName: "",
+    });
+    setShowResults(false);
+    setHitlStatus("pending_review");
+    setOverrideReason("");
+  };
+
+  const allChartData = forecasts.length ? forecasts : mockFreightRate;
+  const filteredChartData = allChartData.filter((p) => {
+    if (chartTab === "14d") {
+      const match = p.day.match(/\d+/);
+      const num = match ? parseInt(match[0]) : 0;
+      return num <= 14;
+    }
+    if (chartTab === "30d") {
+      const match = p.day.match(/\d+/);
+      const num = match ? parseInt(match[0]) : 0;
+      return num <= 30;
+    }
+    return true;
+  });
+
   // Dynamic headers based on calculations
   const heroRecommendationText = isRichardsBay
     ? "WAIT 12 DAYS"
@@ -581,14 +725,84 @@ export default function ImporterPortal({ scenario }) {
         {/* ── LEFT: Form ──────────────────────── */}
         <div className="input-rail">
           <div className="card">
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "1.25rem" }}>
-              <Package size={15} color="var(--accent-primary)" />
-              <span style={{ fontWeight: 700, color: "var(--text-primary)" }}>
-                Cargo Configuration
-              </span>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Package size={15} color="var(--accent-primary)" />
+                <span style={{ fontWeight: 700, color: "var(--text-primary)" }}>
+                  Cargo Configuration
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleReset}
+                title="Reset all inputs"
+                style={{
+                  background: "transparent",
+                  border: "1px solid var(--border-color)",
+                  color: "var(--text-muted)",
+                  borderRadius: 6,
+                  padding: "3px 9px",
+                  fontSize: "0.68rem",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                }}
+              >
+                Reset
+              </button>
             </div>
 
             <div className="input-stack">
+              {/* Quick 1-Click Scenario Presets */}
+              <div style={{ marginBottom: "0.5rem", paddingBottom: "0.75rem", borderBottom: "1px solid var(--border-color)" }}>
+                <div style={{ fontSize: "0.68rem", color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>
+                  ⚡ Quick Presets (1-Click Run)
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {[
+                    { label: "Newcastle ➔ Paradip (75K MT)", origin: "NCWL", dest: "PRDP", vol: "75000", comm: "Coking Coal" },
+                    { label: "Newcastle ➔ Gangavaram (150K MT)", origin: "NCWL", dest: "GNGV", vol: "150000", comm: "Thermal Coal" },
+                    { label: "Samarinda ➔ Haldia (30K MT)", origin: "SAMA", dest: "HALD", vol: "30000", comm: "Thermal Coal" },
+                  ].map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        const next = {
+                          ...formData,
+                          originPort: preset.origin,
+                          originPortName: ORIGIN_PORTS.find(p => p.id === preset.origin)?.name || preset.origin,
+                          destPort: preset.dest,
+                          destPortName: DEST_PORTS.find(p => p.id === preset.dest)?.name || preset.dest,
+                          volume: preset.vol,
+                          commodity: preset.comm,
+                          laycanStart: "2026-09-15",
+                          laycanEnd: "2026-09-25",
+                        };
+                        setFormData(next);
+                        handleRun(next);
+                      }}
+                      style={{
+                        background: formData.originPort === preset.origin && formData.destPort === preset.dest && formData.volume === preset.vol
+                          ? "var(--accent-primary, #0284c7)"
+                          : "rgba(34, 211, 238, 0.08)",
+                        border: "1px solid rgba(34, 211, 238, 0.25)",
+                        color: formData.originPort === preset.origin && formData.destPort === preset.dest && formData.volume === preset.vol
+                          ? "#ffffff"
+                          : "var(--accent-cyan)",
+                        borderRadius: 6,
+                        padding: "4px 8px",
+                        fontSize: "0.68rem",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="input-section-title">Cargo Specs</div>
               <div>
                 <label className="field-label">Commodity</label>
@@ -671,6 +885,10 @@ export default function ImporterPortal({ scenario }) {
                   <select
                     className="select-field"
                     value={formData.destPort}
+                    style={{
+                      borderColor: !formData.destPort && formData.originPort ? "#f59e0b" : undefined,
+                      boxShadow: !formData.destPort && formData.originPort ? "0 0 0 1px rgba(245, 158, 11, 0.4)" : undefined,
+                    }}
                     onChange={(e) => {
                       const port = DEST_PORTS.find((p) => p.id === e.target.value);
                       setFormData((p) => ({
@@ -724,19 +942,21 @@ export default function ImporterPortal({ scenario }) {
               </div>
 
               <button
-                onClick={handleRun}
-                disabled={isRunning || !formData.originPort || !formData.destPort}
+                onClick={() => handleRun()}
+                disabled={isRunning}
+                title="Run AI Optimization Layer"
                 className="btn-primary"
                 style={{
                   width: "100%",
                   justifyContent: "center",
                   padding: "0.8rem",
-                  marginTop: 4,
+                  marginTop: 6,
+                  cursor: isRunning ? "not-allowed" : "pointer",
                 }}
               >
                 {isRunning ? (
                   <>
-                    <Loader size={15} style={{ animation: "spin 1s linear infinite" }} /> Analyzing…
+                    <Loader size={15} style={{ animation: "spin 1s linear infinite" }} /> Analyzing Corridor & Pricing…
                   </>
                 ) : (
                   <>
@@ -744,6 +964,29 @@ export default function ImporterPortal({ scenario }) {
                   </>
                 )}
               </button>
+
+              {(!formData.originPort || !formData.destPort) && (
+                <div
+                  style={{
+                    fontSize: "0.73rem",
+                    color: "var(--accent-cyan)",
+                    background: "rgba(34, 211, 238, 0.08)",
+                    border: "1px solid rgba(34, 211, 238, 0.25)",
+                    borderRadius: 8,
+                    padding: "8px 12px",
+                    marginTop: 8,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  <Sparkles size={14} style={{ flexShrink: 0, color: "#22d3ee" }} />
+                  <span>
+                    Click <strong>Run Optimization Layer</strong> to evaluate standard Newcastle ➔ Paradip route, or customize origin/destination above.
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -878,20 +1121,20 @@ export default function ImporterPortal({ scenario }) {
                     </p>
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>
-                    {["30d", "90d"].map((t) => (
+                    {["14d", "30d", "90d"].map((t) => (
                       <button
                         key={t}
                         className={`tab-button ${chartTab === t ? "active" : ""}`}
                         onClick={() => setChartTab(t)}
                       >
-                        {t === "30d" ? "30-Day" : "90-Day"}
+                        {t === "14d" ? "14-Day" : t === "30d" ? "30-Day" : "90-Day"}
                       </button>
                     ))}
                   </div>
                 </div>
 
                 <ResponsiveContainer width="100%" height={260}>
-                  <LineChart data={forecasts.length ? forecasts : mockFreightRate} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+                  <LineChart data={filteredChartData} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(99,102,241,0.05)" />
                     <XAxis dataKey="day" tick={{ fontSize: 10, fill: "var(--text-muted)" }} />
                     <YAxis tick={{ fontSize: 10, fill: "var(--text-muted)" }} tickFormatter={(v) => `$${v}`} domain={[8, 24]} />
@@ -914,7 +1157,7 @@ export default function ImporterPortal({ scenario }) {
 
               {/* View details */}
               <div className="supporting-details-body" style={{ marginTop: "1rem" }}>
-                <AIResults formData={formData} rankings={rankings} />
+                <AIResults formData={formData} rankings={rankings} aiAgentDecision={aiAgentDecision} />
               </div>
 
               {/* Physical Feasibility Graph */}

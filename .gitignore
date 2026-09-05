@@ -28,6 +28,15 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .env
+venv/
+.venv/
+env/
+ENV/
+*.egg-info/
+
+# Model Weights & Serialized Artifacts
+*.pkl
+forecasting/models/
 
 # SQLite Databases
 *.db

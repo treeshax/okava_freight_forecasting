@@ -36,12 +36,12 @@ def seed_port_constraints(db: Session):
         PortConstraint(port_id="VIZG", max_draft=16.5, max_loa=285.0, max_beam=45.0,
                        effective_from=datetime.date(current_year - 1, 1, 1),
                        effective_to=datetime.date(current_year + 1, 12, 31)),
-        # Gangavaram
-        PortConstraint(port_id="GNGV", max_draft=18.0, max_loa=300.0, max_beam=50.0,
+        # Gangavaram (Deepwater Capesize Berth)
+        PortConstraint(port_id="GNGV", max_draft=20.0, max_loa=320.0, max_beam=50.0,
                        effective_from=datetime.date(current_year - 1, 1, 1),
                        effective_to=datetime.date(current_year + 1, 12, 31)),
-        # Dhamra
-        PortConstraint(port_id="DHMR", max_draft=15.0, max_loa=250.0, max_beam=42.0,
+        # Dhamra (Capesize Berths 1 & 2)
+        PortConstraint(port_id="DHMR", max_draft=18.5, max_loa=300.0, max_beam=45.0,
                        effective_from=datetime.date(current_year - 1, 1, 1),
                        effective_to=datetime.date(current_year + 1, 12, 31)),
         # Gopalpur
@@ -128,7 +128,7 @@ if __name__ == "__main__":
     try:
         seed_port_constraints(session)
         seed_sample_logs(session)
-        # Seeds historical feature records
-        seed_historical_features(days_back=35)
+        # Seeds 365 days of historical feature records for multi-horizon seasonal modeling
+        seed_historical_features(days_back=365)
     finally:
         session.close()

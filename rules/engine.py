@@ -12,10 +12,10 @@ from api.db import PortConstraint, FeatureStore
 
 # Standardized vessel dimensions for physical constraints evaluation
 VESSEL_DIMENSIONS = {
-    "capesize": {"draft": 18.2, "loa": 292.0, "beam": 45.0},
-    "panamax": {"draft": 14.5, "loa": 229.0, "beam": 32.2},
-    "supramax": {"draft": 13.5, "loa": 206.0, "beam": 34.0},
-    "handysize": {"draft": 10.2, "loa": 185.0, "beam": 28.0}
+    "capesize": {"draft": 18.2, "loa": 292.0, "beam": 45.0, "min_dwt": 100000, "max_dwt": 180000},
+    "panamax": {"draft": 14.5, "loa": 229.0, "beam": 32.2, "min_dwt": 55000, "max_dwt": 85000},
+    "supramax": {"draft": 12.8, "loa": 199.0, "beam": 32.2, "min_dwt": 40000, "max_dwt": 65000},
+    "handysize": {"draft": 8.0, "loa": 175.0, "beam": 27.5, "min_dwt": 20000, "max_dwt": 38000}
 }
 
 def evaluate_route_rules(
@@ -52,13 +52,13 @@ def evaluate_route_rules(
 
     # Fallback to static defaults if database constraints are unseeded
     if not constraint:
-        # Static default fallback
+        # Static default fallback (GNGV & DHMR can handle Capesize; PRDP/VIZG handle Panamax; HALD requires Handysize/STS)
         defaults = {
             "PRDP": {"max_draft": 17.0, "max_loa": 280.0, "max_beam": 45.0},
             "VIZG": {"max_draft": 16.5, "max_loa": 285.0, "max_beam": 45.0},
-            "GNGV": {"max_draft": 18.0, "max_loa": 300.0, "max_beam": 50.0},
-            "HALD": {"max_draft": 8.5,  "max_loa": 180.0, "max_beam": 32.0},
-            "DHMR": {"max_draft": 15.0, "max_loa": 250.0, "max_beam": 42.0},
+            "GNGV": {"max_draft": 20.0, "max_loa": 320.0, "max_beam": 50.0}, # Deepwater Capesize berth
+            "HALD": {"max_draft": 8.5,  "max_loa": 180.0, "max_beam": 32.0}, # Riverine Hooghly draft
+            "DHMR": {"max_draft": 18.5, "max_loa": 300.0, "max_beam": 45.0}, # Capesize berths 1 & 2
             "GPPR": {"max_draft": 12.5, "max_loa": 200.0, "max_beam": 32.0},
             "SAGA": {"max_draft": 10.5, "max_loa": 210.0, "max_beam": 32.0} # Lightering STS anchorage
         }
